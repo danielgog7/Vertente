@@ -16,26 +16,62 @@ const guardarDados = () => gravar(LS_DADOS, dados);
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 const hojeISO = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
+const isoDe = d => new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
 const dataObj = iso => new Date(iso + 'T12:00:00');
 const fmtData = iso => { const d = dataObj(iso); return `${d.getDate()} ${MESES[d.getMonth()]}`; };
-const fmtDataLonga = iso => { const d = dataObj(iso); return `${DIAS[d.getDay()][0].toUpperCase() + DIAS[d.getDay()].slice(1)}, ${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`; };
+const fmtDataLonga = iso => { const d = dataObj(iso); return `${DIAS[d.getDay()][0].toUpperCase() + DIAS[d.getDay()].slice(1)}, ${d.getDate()} ${MESES[d.getMonth()]}`; };
 const diasEntre = (a, b) => Math.round((dataObj(b) - dataObj(a)) / 864e5);
 const km = (v, c = 1) => (+v || 0).toLocaleString('pt-PT', {minimumFractionDigits: c, maximumFractionDigits: c});
-const metros = v => Math.round(v || 0).toLocaleString('pt-PT');
+const metros = v => Math.round(v || 0).toLocaleString('pt-PT', {useGrouping: 'always'}).replace(/\./g, ' ');
 function fmtTempo(s){ s = Math.round(s || 0); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; }
-const ritmo = c => c.dist > 0 && c.tempo > 0 ? c.tempo / c.dist : 0;
-const fmtRitmo = s => s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`.replace(/:60$/, ':59') : '–';
+const ritmo = c => c && c.dist > 0 && c.tempo > 0 ? c.tempo / c.dist : 0;
+const fmtRitmo = s => { if (!s) return '–'; s = Math.round(s); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 function lerTempo(t){
   t = String(t || '').trim().replace(',', '.'); if (!t) return 0;
-  if (!t.includes(':')) return Math.round(parseFloat(t) * 60) || 0; // só minutos
+  if (!t.includes(':')) return Math.round(parseFloat(t) * 60) || 0;
   const p = t.split(':').map(x => parseFloat(x) || 0);
   return Math.round(p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + p[1]);
 }
-const corEsforco = e => e >= 9 ? '#ff6b6b' : e >= 7 ? '#ff8a3d' : e >= 4 ? '#f2c66d' : '#7fd6a0';
+const corEsforco = e => ['#5fd39a', '#6fd38f', '#9bd36f', '#c9d35d', '#ecc75a', '#f6a94d', '#fa8a43', '#f9673b', '#f04a3a', '#d6304a'][Math.max(1, Math.min(10, e || 1)) - 1];
+const NOME_ESFORCO = e => e <= 2 ? 'Passeio' : e <= 4 ? 'Leve' : e <= 6 ? 'Moderado' : e <= 8 ? 'Duro' : e === 9 ? 'Muito duro' : 'Máximo';
 const ALT_POR_KM = 100;
 const novoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const COR_ZONA = {Floresta: '#5fae74', Rocha: '#9aa1b0', Neve: '#e4eef8', 'Acima das nuvens': '#f4b98a', Estratosfera: '#8a8ff0', 'Órbita': '#5560c8'};
+const URL_CABRA = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(Montanha.SVG_CABRA);
+const avatar = (grande) => `<div class="av${grande ? ' grande' : ''}"><img src="${URL_CABRA}" alt=""></div>`;
 let timerAviso = 0;
-function avisar(t, ms = 3200){ const a = $('#aviso'); a.textContent = t; a.hidden = false; clearTimeout(timerAviso); timerAviso = setTimeout(() => a.hidden = true, ms); }
+function avisar(t, ms = 3200, tipo = ''){ const a = $('#aviso'); a.className = 'aviso ' + tipo; a.innerHTML = t; a.hidden = false; clearTimeout(timerAviso); timerAviso = setTimeout(() => a.hidden = true, ms); }
+
+/* ---------- ícones ---------- */
+const svgI = (d, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
+const IC = {
+  dist: svgI('<path d="M4 19c3-1 3-6 6-7s4 3 7 1 3-7 3-9"/><circle cx="4" cy="19" r="1.6"/><circle cx="20" cy="4" r="1.6"/>'),
+  tempo: svgI('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M10 2h4"/>'),
+  ritmo: svgI('<path d="M4 15a8 8 0 1 1 16 0"/><path d="M12 15l4-5"/><path d="M4 19h16"/>'),
+  desnivel: svgI('<path d="M3 19l6-9 4 5 3-4 5 8z"/>'),
+  fc: svgI('<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M5 12h3l2-3 3 6 2-3h4"/>'),
+  cal: svgI('<path d="M12 21c4 0 7-2.7 7-7 0-4-3-6-4-9-1 2-2 3-3 3 0-2-1-4-3-5 0 4-4 6-4 11 0 4.3 3 7 7 7z"/>'),
+  alt: svgI('<path d="M2 20l7.5-13 4.5 7 2.5-3.5L22 20z"/>'),
+  corridas: svgI('<path d="M13 4a1.8 1.8 0 1 0 0 .1"/><path d="M8 21l3-6 3 2v5M6 12l3-3 4 1 3 4h3"/><path d="M11 15l-2-4"/>'),
+  semana: svgI('<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+  trofeu: svgI('<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 21h8M10 17h4"/>'),
+  raio: svgI('<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'),
+  sobe: svgI('<path d="M7 17L17 7M9 7h8v8"/>'),
+  desce: svgI('<path d="M7 7l10 10M17 9v8H9"/>'),
+  foto: svgI('<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M9 7h6M9 11h6M9 15h3"/>'),
+  gpx: svgI('<path d="M4 19c3-1 3-6 6-7s4 3 7 1 3-7 3-9"/><circle cx="4" cy="19" r="1.6"/><circle cx="20" cy="4" r="1.6"/>'),
+  mao: svgI('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>'),
+  seta: svgI('<path d="M9 6l6 6-6 6"/>'),
+  pesado: svgI('<path d="M12 4v4"/><rect x="5" y="8" width="14" height="12" rx="3"/><path d="M9 14h6"/>'),
+  normal: svgI('<circle cx="12" cy="12" r="8"/><path d="M8.5 14.5h7M9 10h.01M15 10h.01"/>'),
+  leve: svgI('<path d="M20 4c-8 0-15 5-15 13l-1 3"/><path d="M5 17c5 0 10-3 12-9"/>'),
+  sonoMau: svgI('<path d="M20 14a8 8 0 0 1-10-10 8 8 0 1 0 10 10z"/><path d="M15 3l3 3M18 3l-3 3"/>'),
+  sonoOk: svgI('<path d="M20 14a8 8 0 0 1-10-10 8 8 0 1 0 10 10z"/>'),
+  sonoBom: svgI('<path d="M20 14a8 8 0 0 1-10-10 8 8 0 1 0 10 10z"/><path d="M15 4h4l-4 4h4"/>'),
+  bat1: svgI('<rect x="3" y="7" width="16" height="10" rx="2.5"/><path d="M21 10v4M6 10v4"/>'),
+  bat2: svgI('<rect x="3" y="7" width="16" height="10" rx="2.5"/><path d="M21 10v4M6 10v4M9.5 10v4"/>'),
+  bat3: svgI('<rect x="3" y="7" width="16" height="10" rx="2.5"/><path d="M21 10v4M6 10v4M9.5 10v4M13 10v4M16 10v4"/>')
+};
 
 /* ---------- corridas preparadas para a montanha ---------- */
 function preparar(){
@@ -50,7 +86,7 @@ function preparar(){
     }
     maxDist = Math.max(maxDist, c.dist || 0); if (c.dist >= 3 && r && (!melhorR || r < melhorR)) melhorR = r;
     return Object.assign({}, c, {alt0, alt1: alt, pausa: i ? diasEntre(l[i - 1].data, c.data) : 0, recorde: rec,
-      rotulo: `${fmtData(c.data)} · ${km(c.dist)} km`, sub: `${fmtRitmo(r)} /km · ${fmtTempo(c.tempo)}`});
+      rotulo: `${fmtData(c.data).toUpperCase()} · ${km(c.dist)} KM`, sub: `${fmtRitmo(r)} /km · ${fmtTempo(c.tempo)}`});
   });
 }
 function estadoAtual(lista){
@@ -81,10 +117,11 @@ const FALAS = {
     normal: ['Isto não sobe sozinho, porra.', 'Achas que já fizeste muito? Ainda estás a ver as nuvens por baixo, caramba.', 'Cada desculpa tua é um metro que não sobes. Despacha-te.']
   }
 };
-const TONS = {suave: 'Suave', picante: 'Picante', semfiltro: 'Sem filtro'};
+const TONS = {suave: ['Suave', 'Provoca com carinho e humor leve.', 'Cada quilómetro são cem metros. Faz as contas e mexe-te.'],
+  picante: ['Picante', 'Insultos sarcásticos, sem palavrões.', 'Isso que fizeste chama-se corrida? Eu chamo-lhe passear o cão.'],
+  semfiltro: ['Sem filtro', 'Com palavrões. Avisado estás.', 'Isto não sobe sozinho, porra.']};
 function falaDoMomento(lista, aleatoria){
-  const e = estadoAtual(lista), f = FALAS[cfg.tom] || FALAS.picante;
-  const u = lista[lista.length - 1];
+  const e = estadoAtual(lista), f = FALAS[cfg.tom] || FALAS.picante, u = lista[lista.length - 1];
   if (!aleatoria && u && u.cabra && e.dias !== null && e.dias <= 1) return u.cabra;
   const g = !lista.length ? f.zero : e.tempestade ? f.parado : e.cansado ? f.cansado : f.normal;
   return g[Math.floor(Math.random() * g.length)].replace(/\{nome\}/g, cfg.nome || 'corredor').replace(/\{dias\}/g, e.dias);
@@ -105,9 +142,7 @@ function resumoCorrida(c){
 async function pedirComentario(id){
   const lista = preparar(), i = lista.findIndex(c => c.id === id), c = lista[i];
   if (!c) return '';
-  const ant = lista.slice(Math.max(0, i - 6), i);
-  const total = lista[lista.length - 1].alt1 / ALT_POR_KM;
-  const z = Montanha.zonaDe(c.alt1).nome;
+  const ant = lista.slice(Math.max(0, i - 6), i), total = lista[lista.length - 1].alt1 / ALT_POR_KM, z = Montanha.zonaDe(c.alt1).nome;
   const texto = `És a Cabra Velha: uma cabra montesa velha e rabugenta, guia de montanha na app de corrida Vertente. Cada km corrido dá ${ALT_POR_KM} m de altitude numa montanha sem cume.
 O corredor chama-se ${cfg.nome || 'corredor'} e acabou de registar uma corrida.
 Tom pedido: ${TOM_IA[cfg.tom] || TOM_IA.picante}
@@ -118,7 +153,7 @@ Regras:
 - Rebaixa-o verbalmente para o puxar para cima. O alvo é a preguiça, as desculpas e o ritmo; nunca o corpo, o peso, a aparência ou quem ele é.
 - Acaba sempre a empurrá-lo para a próxima subida.
 - Se ele indicou dores, sono mau ou energia baixa, baixa o tom e manda-o cuidar-se (descansar, não forçar), sem deixares de ser a cabra.
-Corrida de hoje: ${resumoCorrida(c)}${c.dores && c.dores.length ? `, dores: ${c.dores.map(d => ZONAS_DOR[d] || d).join(', ')}` : ', sem dores'}, sono ${c.sono || '?'}, energia ${c.energia || '?'}${c.nota ? `, nota dele: "${c.nota}"` : ''}.
+Corrida de hoje: ${resumoCorrida(c)}${c.dores && c.dores.length ? `, dores: ${c.dores.map(Corpo.nome).join(', ')}` : ', sem dores'}, sono ${c.sono || '?'}, energia ${c.energia || '?'}${c.nota ? `, nota dele: "${c.nota}"` : ''}.
 Altitude: subiu de ${metros(c.alt0)} m para ${metros(c.alt1)} m (zona ${z})${c.recorde ? `. Bateu um recorde: ${c.recorde.toLowerCase()}` : ''}. Dias desde a corrida anterior: ${i ? c.pausa : 'é a primeira'}.
 Corridas anteriores (mais antigas primeiro): ${ant.length ? ant.map(resumoCorrida).join(' | ') : 'nenhuma'}.
 Total acumulado: ${km(total)} km em ${lista.length} corridas.
@@ -129,38 +164,66 @@ Responde só em JSON: {"comentario": "..."}`;
   return String(t).trim().replace(/^"|"$/g, '');
 }
 
-/* ---------- montanha e HUD ---------- */
-let lista = preparar(), balaoAte = 0, balaoTexto = '', vistaAtual = 'vMontanha', subindo = false;
+/* ---------- montanha, HUD e altímetro ---------- */
+let lista = preparar(), balaoAte = 0, vistaAtual = 'vMontanha', subindo = false, longe = false, escrita = 0;
 function atualizarMontanha(){
   lista = preparar();
   Montanha.definir(lista, estadoAtual(lista));
-  if (!subindo) $('#altNum').textContent = metros(lista.length ? lista[lista.length - 1].alt1 : 0);
+  const topo = lista.length ? lista[lista.length - 1].alt1 : 0;
+  if (!subindo) $('#altNum').textContent = metros(topo);
   $('#altKm').textContent = `${km(lista.reduce((s, c) => s + (c.dist || 0), 0))} km`;
+  desenharAltimetro(topo);
 }
-function mostrarBalao(texto, ms = 11000){ balaoTexto = texto; $('#balaoTxt').innerHTML = texto; balaoAte = performance.now() + ms; }
+function mostrarZona(nome){ $('#altZona').textContent = nome; $('#zonaCor').style.cssText = `background:${COR_ZONA[nome] || '#fff'};color:${COR_ZONA[nome] || '#fff'}`; }
+let altMax = 2500, altTopo = 0;
+function desenharAltimetro(topo){
+  altTopo = topo; altMax = Math.max(2500, topo * 1.12 + 400);
+  const segs = Montanha.ZONAS.map((z, i) => [z, Montanha.ZONAS[i + 1] ? Montanha.ZONAS[i + 1].alt : Infinity]).filter(([z]) => z.alt < altMax);
+  $('#altEixo').innerHTML = segs.map(([z, fim]) => `<div class="seg" style="bottom:${z.alt / altMax * 100}%;height:${(Math.min(fim, altMax) - z.alt) / altMax * 100}%;background:${COR_ZONA[z.nome]};opacity:.28"></div>`).join('') + `<div class="feito" style="height:${topo / altMax * 100}%"></div>`;
+  $('#altRiscas').innerHTML = segs.slice(1).map(([z]) => `<div class="risca" style="bottom:${z.alt / altMax * 100}%"><span>${z.alt / 1000}K</span></div>`).join('');
+  $('#altTopo').style.bottom = (topo / altMax * 100) + '%';
+}
+function moverVista(cam){ $('#altVista').style.bottom = Math.max(0, Math.min(100, cam / altMax * 100)) + '%'; }
+function ligarAltimetro(){
+  const el = $('#altimetro'); let ativo = false;
+  const alt = e => { const r = $('#altEixo').getBoundingClientRect(); return (1 - (e.clientY - r.top) / r.height) * altMax; };
+  el.addEventListener('pointerdown', e => { ativo = true; el.setPointerCapture(e.pointerId); Montanha.irPara(alt(e), true); });
+  el.addEventListener('pointermove', e => { if (ativo) Montanha.irPara(alt(e), false); });
+  el.addEventListener('pointerup', () => ativo = false); el.addEventListener('pointercancel', () => ativo = false);
+}
+function mostrarBalao(texto, {ms = 12000, extra = '', carregar = false} = {}){
+  const el = $('#balaoTxt'); clearInterval(escrita); balaoAte = performance.now() + ms;
+  if (carregar){ el.innerHTML = '<span class="pontos"><i></i><i></i><i></i></span>'; return; }
+  el.innerHTML = ''; const s = document.createElement('span'), cur = document.createElement('i'); cur.className = 'cursor'; el.append(s, cur);
+  let i = 0;
+  escrita = setInterval(() => { i += 2; s.textContent = texto.slice(0, i); if (i >= texto.length){ clearInterval(escrita); cur.remove(); if (extra) el.insertAdjacentHTML('beforeend', `<small>${extra}</small>`); } }, 24);
+}
 function colocarBalao(p){
   const b = $('#balao'), visivel = vistaAtual === 'vMontanha' && performance.now() < balaoAte && !longe && $('#folha').hidden;
   if (!visivel){ if (!b.hidden) b.hidden = true; return; }
   b.hidden = false;
-  const r = $('#montanha').getBoundingClientRect(), w = b.offsetWidth, x = Math.max(w / 2 + 10, Math.min(r.width - w / 2 - 10, p.x));
-  b.style.left = x + 'px'; b.style.top = (p.y - 8) + 'px';
-  b.style.setProperty('--seta', Math.max(14, Math.min(w - 14, w / 2 + (p.x - x))) + 'px');
+  const W = innerWidth, w = b.offsetWidth, x = Math.max(w / 2 + 10, Math.min(W - w / 2 - 10, p.x));
+  b.style.left = x + 'px'; b.style.top = (p.y - 6) + 'px';
+  b.style.setProperty('--seta', Math.max(18, Math.min(w - 18, w / 2 + (p.x - x))) + 'px');
 }
-let longe = false;
 function iniciarMontanha(){
+  $('#balaoAv').innerHTML = `<img src="${URL_CABRA}" alt="">`;
   Montanha.iniciar($('#montanha'), {
     onVista: v => {
       longe = v.longe; $('#btTopo').hidden = !v.longe || subindo;
-      if (!subindo) $('#altZona').textContent = Montanha.zonaDe(subindo ? v.cam : v.topo).nome;
+      if (!subindo) mostrarZona(Montanha.zonaDe(v.topo).nome);
+      moverVista(v.cam);
       if (Math.abs(v.cam - v.topo) > 120) $('#dica').style.opacity = 0;
     },
     onCabra: colocarBalao,
-    onToqueCabra: () => mostrarBalao(esc(falaDoMomento(lista, true))),
+    onToqueCabra: () => mostrarBalao(falaDoMomento(lista, true)),
     onAcampamento: c => abrirDetalhe(c.id)
   });
+  ligarAltimetro();
   atualizarMontanha(); Montanha.irTopo(false);
-  setTimeout(() => mostrarBalao(esc(falaDoMomento(lista))), 900);
-  if (lista.length > 2) setTimeout(() => $('#dica').style.opacity = 0, 6000); else $('#dica').textContent = lista.length ? 'Arrasta para cima para descer a montanha' : 'Toca no + para registar a primeira corrida';
+  setTimeout(() => mostrarBalao(falaDoMomento(lista)), 900);
+  if (!lista.length) $('#dica').textContent = 'Toca no + depois da primeira corrida';
+  else if (lista.length > 2) setTimeout(() => $('#dica').style.opacity = 0, 6000);
 }
 
 /* ---------- navegação ---------- */
@@ -172,26 +235,21 @@ function irVista(id){
   if (id === 'vProgresso') renderProgresso();
   if (id === 'vPerfil') renderPerfil();
 }
-
-/* ---------- folha ---------- */
 function abrirFolha(html){ $('#folhaCaixa').innerHTML = html; $('#folha').hidden = false; $('#folhaCaixa').scrollTop = 0; }
 function fecharFolha(){ $('#folha').hidden = true; $('#folhaCaixa').innerHTML = ''; novo = null; }
+const passos = n => `<div class="passos">${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</div>`;
 
 /* ---------- registar corrida ---------- */
 let novo = null;
-const ICONES = {
-  foto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M9 7h6M9 11h6M9 15h3"/></svg>',
-  gpx: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19c3-1 3-6 6-7s4 3 7 1 3-7 3-9"/><circle cx="4" cy="19" r="1.6"/><circle cx="20" cy="4" r="1.6"/></svg>',
-  mao: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg>'
-};
 function abrirRegisto(){
   novo = {data: hojeISO(), dist: '', tempo: 0, desnivel: '', fc: '', cal: '', parciais: [], pontos: null, origem: 'manual', esforco: 0, sensacao: 'normal', dores: [], sono: 'ok', energia: 'média', nota: ''};
-  abrirFolha(`<h2>Nova subida</h2><p class="suave peq" style="margin:0 0 16px">Como queres registar a corrida?</p>
+  abrirFolha(`${passos(1)}<h2>Nova subida</h2><p class="sub">Como queres registar a corrida?</p>
     <div class="escolhas">
-      <button class="escolha" data-acao="escFoto">${ICONES.foto}<div><b>Print do Strava</b><span>A Cabra lê o resumo e preenche os números. Também podes partilhar o print diretamente para a Vertente.</span></div></button>
-      <button class="escolha" data-acao="escGpx">${ICONES.gpx}<div><b>Ficheiro GPX</b><span>Exportado do Strava (no site: atividade → ⋯ → Exportar GPX). Traz o mapa do percurso.</span></div></button>
-      <button class="escolha" data-acao="escMao">${ICONES.mao}<div><b>À mão</b><span>Distância e tempo, sem complicações.</span></div></button>
-    </div>`);
+      <button class="escolha prim" data-acao="escFoto"><div class="ic">${IC.foto}</div><div><b>Print do Strava</b><span>A Cabra lê o resumo e preenche os números por ti.</span></div><span class="tag">MAIS RÁPIDO</span></button>
+      <button class="escolha" data-acao="escGpx" style="--c:rgba(159,208,255,.12);--k:var(--gelo)"><div class="ic">${IC.gpx}</div><div><b>Ficheiro GPX</b><span>Exportado do Strava no site. Traz o mapa do percurso.</span></div><span class="seta">${IC.seta}</span></button>
+      <button class="escolha" data-acao="escMao" style="--c:rgba(127,214,160,.12);--k:var(--musgo)"><div class="ic">${IC.mao}</div><div><b>À mão</b><span>Distância e tempo, sem complicações.</span></div><span class="seta">${IC.seta}</span></button>
+    </div>
+    <p class="nota">Dica: com a Vertente instalada, no Strava toca em partilhar o print e escolhe a Vertente.</p>`);
 }
 async function imagemReduzida(ficheiro){
   const url = URL.createObjectURL(ficheiro);
@@ -209,10 +267,10 @@ async function tratarFoto(ficheiro){
   try { img = await imagemReduzida(ficheiro); } catch(e){ avisar('Não consegui abrir essa imagem.'); return; }
   novo.origem = 'foto';
   if (!IA.temIA(cfg.chave)){
-    abrirFolha(`<h2>Sem IA configurada</h2><p class="suave">Para a Cabra ler o print, põe a chave do Gemini (ou a do Groq) no Perfil. Entretanto, podes preencher à mão.</p><img class="previa" src="${img}" alt=""><div class="linhaBts"><button class="btn" data-acao="irPerfil">Ir ao Perfil</button><button class="btn pri" data-acao="escMao">Preencher à mão</button></div>`);
+    abrirFolha(`${passos(1)}<h2>Sem IA configurada</h2><p class="sub">Para a Cabra ler o print, põe a chave do Gemini (ou a do Groq) no Perfil. Entretanto, podes preencher à mão.</p><img class="previa" src="${img}" alt=""><div class="linhaBts"><button class="btn" data-acao="irPerfil">Perfil</button><button class="btn pri" data-acao="escMao">À mão</button></div>`);
     return;
   }
-  abrirFolha(`<h2>A ler o print</h2><img class="previa" src="${img}" alt="Print da corrida"><div class="carrega"><span class="roda"></span><span id="estadoIA">A Cabra está a pôr os óculos…</span></div><button class="btn larg" data-acao="cancelarIA">Cancelar</button>`);
+  abrirFolha(`${passos(1)}<h2>A ler o print</h2><div class="leitura"><img class="previa" src="${img}" alt="Print da corrida"></div><div class="carrega"><span class="roda"></span><span id="estadoIA">A Cabra está a pôr os óculos…</span></div><button class="btn larg" data-acao="cancelarIA">Cancelar</button>`);
   const texto = `Lê este print de um resumo de atividade (Strava, Garmin, Google Fit ou outro relógio). Hoje é ${hojeISO()} (${DIAS[new Date().getDay()]}).
 Devolve só JSON com: {"e_corrida": true/false, "tipo": "corrida"|"caminhada"|"bicicleta"|"outro", "data": "AAAA-MM-DD" ou null, "hora": "HH:MM" ou null, "distancia_km": número, "tempo_s": número (tempo em movimento; se só houver o total, usa esse), "desnivel_m": número ou null, "fc_media": número ou null, "calorias": número ou null, "parciais_s": [segundos de cada km completo, por ordem] ou []}.
 Datas podem vir em português ou inglês ("Hoje", "Ontem", "19 de out. de 2026", "Yesterday"). Converte milhas para km se for o caso. Se não vires um valor, usa null. Não inventes números.`;
@@ -229,9 +287,8 @@ Datas podem vir em português ou inglês ("Hoje", "Ontem", "19 de out. de 2026",
     });
     passoDados(img);
   } catch(e){
-    if (!novo) return;
-    if (e.message === 'Cancelado.') return;
-    abrirFolha(`<h2>A Cabra não conseguiu ler</h2><p class="erro">${esc(e.message || e)}</p><img class="previa" src="${img}" alt=""><div class="linhaBts"><button class="btn" data-acao="escFoto">Outro print</button><button class="btn pri" data-acao="escMao">Preencher à mão</button></div>`);
+    if (!novo || e.message === 'Cancelado.') return;
+    abrirFolha(`${passos(1)}<h2>A Cabra não conseguiu ler</h2><p class="erro">${esc(e.message || e)}</p><img class="previa" src="${img}" alt=""><div class="linhaBts"><button class="btn" data-acao="escFoto">Outro print</button><button class="btn pri" data-acao="escMao">À mão</button></div>`);
   }
 }
 function lerGpx(texto){
@@ -249,7 +306,7 @@ function lerGpx(texto){
   for (let i = 1; i < pts.length; i++){
     const a = pts[i - 1], b = pts[i], s = dist(a, b), dt = (b.t - a.t) / 1000;
     d += s;
-    if (isFinite(dt) && dt > 0 && dt < 60 && s / dt > .6) mov += dt; // conta só em movimento
+    if (isFinite(dt) && dt > 0 && dt < 60 && s / dt > .6) mov += dt;
     if (isFinite(b.ele) && refEle !== null){ if (b.ele - refEle > 3){ sobe += b.ele - refEle; refEle = b.ele; } else if (b.ele < refEle) refEle = b.ele; }
     if (d >= proxKm && isFinite(b.t) && isFinite(tKm)){ parciais.push(Math.round((b.t - tKm) / 1000)); tKm = b.t; proxKm += 1000; }
   }
@@ -257,34 +314,36 @@ function lerGpx(texto){
   const passo = Math.max(1, Math.ceil(pts.length / 300));
   const pontos = pts.filter((_, i) => i % passo === 0 || i === pts.length - 1).map(p => [+p.lat.toFixed(5), +p.lon.toFixed(5)]);
   const d0 = isFinite(pts[0].t) ? new Date(pts[0].t) : new Date();
-  return {dist: +(d / 1000).toFixed(2), tempo: Math.round(mov > total * .5 ? mov : total), desnivel: Math.round(sobe) || '', parciais: parciais.filter(x => x > 60 && x < 1800), pontos,
-    data: new Date(d0 - d0.getTimezoneOffset() * 6e4).toISOString().slice(0, 10), hora: d0.toTimeString().slice(0, 5)};
+  return {dist: +(d / 1000).toFixed(2), tempo: Math.round(mov > total * .5 ? mov : total), desnivel: Math.round(sobe) || '', parciais: parciais.filter(x => x > 60 && x < 1800), pontos, data: isoDe(d0), hora: d0.toTimeString().slice(0, 5)};
 }
 async function tratarGpx(ficheiro){
   if (!novo) abrirRegisto();
   try { Object.assign(novo, lerGpx(await ficheiro.text()), {origem: 'gpx'}); passoDados(); }
-  catch(e){ avisar('GPX inválido: ' + (e.message || e), 4500); }
+  catch(e){ avisar('GPX inválido: ' + esc(e.message || e), 4500); }
 }
 function passoDados(img){
   const n = novo, ed = !!n.editId;
-  abrirFolha(`<h2>${ed ? 'Editar corrida' : 'Os números'}</h2>
+  abrirFolha(`${ed ? '' : passos(2)}<h2>${ed ? 'Editar corrida' : 'Os números'}</h2>
+    <p class="sub">${n.origem === 'foto' ? 'Confirma o que a Cabra leu. Ela é velha e já vê mal.' : n.origem === 'gpx' ? 'Calculado a partir do GPX. Confirma.' : 'O essencial: distância e tempo.'}</p>
     ${img ? `<img class="previa" src="${img}" alt="">` : ''}
-    ${n.origem === 'foto' ? '<p class="suave peq" style="margin:4px 0">Confirma o que a Cabra leu. Ela é velha e já vê mal.</p>' : ''}
-    <label class="campo"><span>Data</span><input type="date" id="cData" value="${esc(n.data)}" max="${hojeISO()}"></label>
     <div class="duas">
-      <label class="campo"><span>Distância (km)</span><input type="number" id="cDist" inputmode="decimal" step="0.01" min="0" value="${esc(n.dist)}" placeholder="5,20"></label>
-      <label class="campo"><span>Tempo</span><input type="text" id="cTempo" inputmode="numeric" value="${n.tempo ? fmtTempo(n.tempo) : ''}" placeholder="28:47"></label>
+      <label class="campo"><span>Distância · km</span><input class="grande" type="number" id="cDist" inputmode="decimal" step="0.01" min="0" value="${esc(n.dist)}" placeholder="5,20"></label>
+      <label class="campo"><span>Tempo</span><input class="grande" type="text" id="cTempo" inputmode="numeric" value="${n.tempo ? fmtTempo(n.tempo) : ''}" placeholder="28:47"></label>
     </div>
     <div class="ritmoVivo" id="ritmoVivo"></div>
-    <div class="duas">
-      <label class="campo"><span>Desnível (m)</span><input type="number" id="cDesn" inputmode="numeric" value="${esc(n.desnivel)}" placeholder="opcional"></label>
-      <label class="campo"><span>FC média</span><input type="number" id="cFc" inputmode="numeric" value="${esc(n.fc)}" placeholder="opcional"></label>
+    <label class="campo"><span>Data</span><input type="date" id="cData" value="${esc(n.data)}" max="${hojeISO()}"></label>
+    <div class="tres">
+      <label class="campo"><span>Desnível · m</span><input type="number" id="cDesn" inputmode="numeric" value="${esc(n.desnivel)}" placeholder="–"></label>
+      <label class="campo"><span>FC média</span><input type="number" id="cFc" inputmode="numeric" value="${esc(n.fc)}" placeholder="–"></label>
+      <label class="campo"><span>Calorias</span><input type="number" id="cCal" inputmode="numeric" value="${esc(n.cal)}" placeholder="–"></label>
     </div>
-    <label class="campo"><span>Calorias</span><input type="number" id="cCal" inputmode="numeric" value="${esc(n.cal)}" placeholder="opcional"></label>
-    ${n.parciais.length ? `<p class="suave mini">${n.parciais.length} parciais por km guardados.</p>` : ''}
+    ${n.parciais.length ? `<p class="nota">${n.parciais.length} parciais por km guardados.</p>` : ''}
     <p class="erro" id="erroDados" hidden></p>
     <div class="linhaBts">${ed ? '<button class="btn" data-acao="fechar">Cancelar</button>' : '<button class="btn" data-acao="registar">Voltar</button>'}<button class="btn pri" data-acao="dadosOk">Seguinte</button></div>`);
-  const vivo = () => { const d = parseFloat(String($('#cDist').value).replace(',', '.')), t = lerTempo($('#cTempo').value); $('#ritmoVivo').textContent = d > 0 && t > 0 ? `Ritmo ${fmtRitmo(t / d)} /km · +${metros(d * ALT_POR_KM)} m de altitude` : ''; };
+  const vivo = () => {
+    const d = parseFloat(String($('#cDist').value).replace(',', '.')), t = lerTempo($('#cTempo').value);
+    $('#ritmoVivo').innerHTML = d > 0 && t > 0 ? `<div>${fmtRitmo(t / d)}<small>/km</small></div><div>+${metros(d * ALT_POR_KM)}<small>m de altitude</small></div>` : '<span class="vazio">O ritmo e a altitude ganha aparecem aqui.</span>';
+  };
   $('#cDist').addEventListener('input', vivo); $('#cTempo').addEventListener('input', vivo); vivo();
 }
 function lerDados(){
@@ -295,43 +354,32 @@ function lerDados(){
   Object.assign(novo, {dist: +d, tempo: t, data, desnivel: num('#cDesn'), fc: num('#cFc'), cal: num('#cCal')});
   return true;
 }
-const ZONAS_DOR = {lombar: 'Lombar', anca: 'Anca', coxaE: 'Coxa esq.', coxaD: 'Coxa dir.', joelhoE: 'Joelho esq.', joelhoD: 'Joelho dir.', gemeoE: 'Gémeo esq.', gemeoD: 'Gémeo dir.', peE: 'Pé/tornozelo esq.', peD: 'Pé/tornozelo dir.'};
-function svgCorpo(sel){
-  const z = (id, el) => el.replace('<e ', `<ellipse class="zona${sel.includes(id) ? ' on' : ''}" data-dor="${id}" `).replace('/>', '><title>' + ZONAS_DOR[id] + '</title></ellipse>');
-  return `<svg viewBox="0 0 120 232" aria-label="Corpo, vista de costas">
-    <path class="silh" d="M60 6a12 12 0 1 1 0 24a12 12 0 1 1 0-24zM44 34h32c6 0 10 4 11 10l6 44c.5 4-4 5-5 1l-6-36-2 46c0 4 0 7 1 11l2 40 1 30c0 4 3 8 3 13 0 4-9 4-11 0l-3-13-3-34-2-36h-2l-2 36-3 34-3 13c-2 4-11 4-11 0 0-5 3-9 3-13l1-30 2-40c1-4 1-7 1-11l-2-46-6 36c-1 4-5.5 3-5-1l6-44c1-6 5-10 11-10z"/>
-    ${z('lombar', '<e cx="60" cy="86" rx="13" ry="7"/>')}${z('anca', '<e cx="60" cy="106" rx="18" ry="8"/>')}
-    ${z('coxaE', '<e cx="49" cy="134" rx="8" ry="15"/>')}${z('coxaD', '<e cx="71" cy="134" rx="8" ry="15"/>')}
-    ${z('joelhoE', '<e cx="49" cy="160" rx="6.5" ry="6.5"/>')}${z('joelhoD', '<e cx="71" cy="160" rx="6.5" ry="6.5"/>')}
-    ${z('gemeoE', '<e cx="48" cy="184" rx="6" ry="11"/>')}${z('gemeoD', '<e cx="72" cy="184" rx="6" ry="11"/>')}
-    ${z('peE', '<e cx="47" cy="214" rx="7" ry="7"/>')}${z('peD', '<e cx="73" cy="214" rx="7" ry="7"/>')}
-  </svg>`;
-}
 function passoPerguntas(){
-  const n = novo, ch = (grupo, vals) => vals.map(([v, r]) => `<button class="chip${n[grupo] === v ? ' on' : ''}" data-acao="perg" data-g="${grupo}" data-v="${v}">${r}</button>`).join('');
-  abrirFolha(`<h2>Perguntas rápidas</h2><p class="suave peq" style="margin:0">Só o esforço é obrigatório. O resto já vem preenchido.</p>
-    <h3>Esforço</h3>
-    <div class="escala">${Array.from({length: 10}, (_, i) => `<button data-acao="esforco" data-v="${i + 1}" class="${n.esforco === i + 1 ? 'on' : ''}" style="${n.esforco === i + 1 ? `background:${corEsforco(i + 1)}` : ''}">${i + 1}</button>`).join('')}</div>
-    <div class="escalaLeg"><span>Passeio</span><span>Morri</span></div>
-    <h3>Como te sentiste</h3><div class="chips">${ch('sensacao', [['pesado', 'Pesado'], ['normal', 'Normal'], ['leve', 'Leve']])}</div>
-    <h3>Dores (vista de costas)</h3>
-    <div class="corpo">${svgCorpo(n.dores)}<div class="lista"><p style="margin:0 0 10px">Toca onde dói.</p><div id="listaDores">${listaDores()}</div><button class="chip${n.dores.length ? '' : ' on'}" data-acao="semDores" style="margin-top:10px">Sem dores</button></div></div>
-    <h3>Sono antes</h3><div class="chips">${ch('sono', [['mau', 'Mau'], ['ok', 'Ok'], ['bom', 'Bom']])}</div>
-    <h3>Energia antes</h3><div class="chips">${ch('energia', [['baixa', 'Baixa'], ['média', 'Média'], ['alta', 'Alta']])}</div>
-    <h3>Nota</h3><textarea id="cNota" placeholder="Opcional. Podes ditar com o microfone do teclado.">${esc(n.nota)}</textarea>
+  const n = novo, seg = (grupo, vals) => `<div class="seg3">${vals.map(([v, r, ic]) => `<button class="chip${n[grupo] === v ? ' on' : ''}" data-acao="perg" data-g="${grupo}" data-v="${v}">${IC[ic]}${r}</button>`).join('')}</div>`;
+  abrirFolha(`${n.editId ? '' : passos(3)}<h2>Como foi?</h2><p class="sub">Só o esforço é obrigatório. O resto já vem preenchido.</p>
+    <div class="rotulo">Esforço</div>
+    <div class="esforco">${Array.from({length: 10}, (_, i) => `<button data-acao="esforco" data-v="${i + 1}" style="--i:${i};--c:${corEsforco(i + 1)}" class="${n.esforco === i + 1 ? 'on' : n.esforco > i + 1 ? 'antes' : ''}"><span>${i + 1}</span></button>`).join('')}</div>
+    <div class="esforcoInfo" id="esforcoInfo">${n.esforco ? `<b style="color:${corEsforco(n.esforco)}">${n.esforco}</b><span>${NOME_ESFORCO(n.esforco)}</span>` : '<span>Toca na barra</span>'}</div>
+    <div class="rotulo">Como te sentiste</div>${seg('sensacao', [['pesado', 'Pesado', 'pesado'], ['normal', 'Normal', 'normal'], ['leve', 'Leve', 'leve']])}
+    <div class="rotulo">Dores</div>
+    ${Corpo.svg(n.dores)}
+    <div class="doresLista" id="listaDores">${listaDores()}</div>
+    <div class="rotulo">Sono antes</div>${seg('sono', [['mau', 'Mau', 'sonoMau'], ['ok', 'Ok', 'sonoOk'], ['bom', 'Bom', 'sonoBom']])}
+    <div class="rotulo">Energia antes</div>${seg('energia', [['baixa', 'Baixa', 'bat1'], ['média', 'Média', 'bat2'], ['alta', 'Alta', 'bat3']])}
+    <div class="rotulo">Nota</div><textarea id="cNota" placeholder="Opcional. Podes ditar com o microfone do teclado.">${esc(n.nota)}</textarea>
     <p class="erro" id="erroPerg" hidden>Diz-me o esforço, de 1 a 10.</p>
     <div class="linhaBts"><button class="btn" data-acao="voltarDados">Voltar</button><button class="btn pri" data-acao="guardar">${n.editId ? 'Guardar' : 'Subir'}</button></div>`);
 }
-const listaDores = () => novo.dores.length ? novo.dores.map(d => `<div style="color:#ff9b9b">• ${ZONAS_DOR[d]}</div>`).join('') : '<div>Nenhuma.</div>';
+const listaDores = () => novo.dores.length ? novo.dores.map(d => `<span class="d">${esc(Corpo.nome(d))}</span>`).join('') + '<button class="chip" data-acao="semDores" style="padding:7px 10px;font-size:13px">Limpar</button>' : '<span class="nota" style="margin:0">Toca onde dói. Sem toques, fica "sem dores".</span>';
 async function guardarCorrida(){
   novo.nota = ($('#cNota').value || '').trim();
-  if (!novo.esforco){ $('#erroPerg').hidden = false; return; }
+  if (!novo.esforco){ $('#erroPerg').hidden = false; $('#erroPerg').scrollIntoView({behavior: 'smooth', block: 'center'}); return; }
   const campos = ['data', 'hora', 'dist', 'tempo', 'desnivel', 'fc', 'cal', 'parciais', 'pontos', 'origem', 'esforco', 'sensacao', 'dores', 'sono', 'energia', 'nota'];
   const reg = {}; campos.forEach(k => reg[k] = novo[k] === undefined ? '' : novo[k]);
   const antes = lista.length ? lista[lista.length - 1].alt1 : 0;
   if (novo.editId){
     const c = dados.corridas.find(x => x.id === novo.editId);
-    Object.assign(c, reg); guardarDados(); fecharFolha(); atualizarMontanha(); avisar('Corrida atualizada.');
+    Object.assign(c, reg); guardarDados(); fecharFolha(); atualizarMontanha(); if (vistaAtual === 'vProgresso') renderProgresso(); avisar('Corrida atualizada.');
     return;
   }
   const c = Object.assign({id: novoId(), criada: Date.now(), cabra: ''}, reg);
@@ -339,136 +387,220 @@ async function guardarCorrida(){
   if (!guardarDados()){ dados.corridas.pop(); return; }
   fecharFolha(); irVista('vMontanha');
   atualizarMontanha();
-  const depois = lista[lista.length - 1].alt1, ultimaMinha = lista[lista.length - 1].id === c.id;
-  const zAntes = Montanha.zonaDe(antes).nome;
+  const depois = lista[lista.length - 1].alt1, ultimaMinha = lista[lista.length - 1].id === c.id, zAntes = Montanha.zonaDe(antes).nome;
   subindo = true; $('#btTopo').hidden = true; balaoAte = 0;
   const de = ultimaMinha ? antes : depois;
   $('#altNum').textContent = metros(de);
-  Montanha.subir(de, depois, cam => { $('#altNum').textContent = metros(cam); $('#altZona').textContent = Montanha.zonaDe(cam).nome; }, async () => {
-    subindo = false; $('#altNum').textContent = metros(depois); $('#altZona').textContent = Montanha.zonaDe(depois).nome;
+  Montanha.subir(de, depois, cam => { $('#altNum').textContent = metros(cam); mostrarZona(Montanha.zonaDe(cam).nome); }, async () => {
+    subindo = false; $('#altNum').textContent = metros(depois); mostrarZona(Montanha.zonaDe(depois).nome);
     const zDepois = Montanha.zonaDe(depois).nome;
-    if (ultimaMinha && zDepois !== zAntes) avisar(`Nova zona desbloqueada: ${zDepois}`, 5000);
-    if (!IA.temIA(cfg.chave)){ mostrarBalao(esc(falaDoMomento(lista, true)) + '<br><small style="opacity:.7">Põe a chave da IA no Perfil para eu comentar a sério.</small>'); return; }
-    mostrarBalao('<span class="pontos"><i></i><i></i><i></i></span>', 60000);
+    if (ultimaMinha && zDepois !== zAntes) avisar(`<small>NOVA ZONA DESBLOQUEADA</small>${esc(zDepois)}`, 5200, 'zona');
+    else avisar(`+${metros(depois - antes)} m · ${km(c.dist)} km`, 2600);
+    if (!IA.temIA(cfg.chave)){ mostrarBalao(falaDoMomento(lista, true), {extra: 'Põe a chave da IA no Perfil para eu comentar a sério.'}); return; }
+    mostrarBalao('', {carregar: true, ms: 60000});
     try {
       const t = await pedirComentario(c.id);
       const x = dados.corridas.find(k => k.id === c.id); if (x && t){ x.cabra = t; guardarDados(); lista = preparar(); }
-      mostrarBalao(esc(t || falaDoMomento(lista, true)), 16000);
-    } catch(e){ mostrarBalao(esc(falaDoMomento(lista, true)) + `<br><small style="opacity:.7">${esc(e.message || 'A IA não respondeu.')}</small>`); }
+      mostrarBalao(t || falaDoMomento(lista, true), {ms: 18000});
+    } catch(e){ mostrarBalao(falaDoMomento(lista, true), {extra: esc(e.message || 'A IA não respondeu.')}); }
   });
 }
 
 /* ---------- detalhe de uma corrida ---------- */
-function svgParciais(p){
-  const max = Math.max(...p), min = Math.min(...p), W = 320, H = 110, bw = Math.min(28, (W - 10) / p.length - 4);
-  return `<svg class="grafico" viewBox="0 0 ${W} ${H + 16}">${p.map((s, i) => {
-    const h = 20 + (H - 26) * (1 - (s - min) / Math.max(1, max - min)) , x = 5 + i * (bw + 4);
-    return `<rect x="${x}" y="${H - h}" width="${bw}" height="${h}" rx="4" fill="${s === min ? '#ff8a3d' : '#9cc3e6'}" opacity="${s === min ? 1 : .55}"/><text x="${x + bw / 2}" y="${H + 12}" text-anchor="middle">${i + 1}</text>${bw > 22 ? `<text x="${x + bw / 2}" y="${H - h + 12}" text-anchor="middle" style="fill:#0b1016;font-weight:700;font-size:9px">${fmtRitmo(s)}</text>` : ''}`;
-  }).join('')}</svg>`;
+function htmlParciais(p){
+  const min = Math.min(...p), max = Math.max(...p);
+  return `<div class="parciais">${p.map((s, i) => `<div class="parcial${s === min ? ' melhor' : ''}"><span class="k">${i + 1}</span><div class="b"><i style="width:${(40 + 60 * (max === min ? 1 : (max - s) / (max - min))).toFixed(1)}%"></i></div><span class="t">${fmtRitmo(s)}</span></div>`).join('')}</div>`;
 }
 function svgPercurso(pts){
   const la = pts.map(p => p[0]), lo = pts.map(p => p[1]), k = Math.cos(la[0] * Math.PI / 180);
   const minX = Math.min(...lo) * k, maxX = Math.max(...lo) * k, minY = Math.min(...la), maxY = Math.max(...la);
-  const W = 320, H = 200, s = Math.min((W - 20) / Math.max(1e-9, maxX - minX), (H - 20) / Math.max(1e-9, maxY - minY));
+  const W = 340, H = 210, s = Math.min((W - 40) / Math.max(1e-9, maxX - minX), (H - 40) / Math.max(1e-9, maxY - minY));
   const ox = (W - (maxX - minX) * s) / 2, oy = (H - (maxY - minY) * s) / 2;
-  const xy = pts.map(p => [ox + (p[1] * k - minX) * s, H - oy - (p[0] - minY) * s]);
-  return `<svg class="grafico" viewBox="0 0 ${W} ${H}" style="background:#0d141c;border-radius:14px"><polyline points="${xy.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="#ff8a3d" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${xy[0][0]}" cy="${xy[0][1]}" r="5" fill="#7fd6a0"/><circle cx="${xy[xy.length - 1][0]}" cy="${xy[xy.length - 1][1]}" r="5" fill="#ff6b6b"/></svg>`;
+  const xy = pts.map(p => [ox + (p[1] * k - minX) * s, H - oy - (p[0] - minY) * s]), d = xy.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ');
+  const grelha = Array.from({length: 9}, (_, i) => `<path d="M${i * 42.5} 0V${H}M0 ${i * 26.25}H${W}" stroke="rgba(255,255,255,.04)"/>`).join('');
+  return `<div class="mapa"><svg class="grafico" viewBox="0 0 ${W} ${H}"><defs><filter id="brilho"><feGaussianBlur stdDeviation="4"/></filter></defs>${grelha}
+    <polyline points="${d}" fill="none" stroke="#ff7a2f" stroke-width="7" opacity=".55" filter="url(#brilho)"/>
+    <polyline points="${d}" fill="none" stroke="#ffb15c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" class="anima-linha" style="--l:2000"/>
+    <circle cx="${xy[0][0]}" cy="${xy[0][1]}" r="6" fill="#5fd39a" stroke="#0b121d" stroke-width="2.5"/><circle cx="${xy[xy.length - 1][0]}" cy="${xy[xy.length - 1][1]}" r="6" fill="#fff" stroke="#ff7a2f" stroke-width="3"/></svg></div>`;
 }
 function abrirDetalhe(id){
   const c = preparar().find(x => x.id === id); if (!c) return;
-  const est = (v, u, r) => v ? `<div class="cartao"><div class="num">${v}<small>${u}</small></div><div class="rot">${r}</div></div>` : '';
-  const sim = {pesado: 'Pesado', normal: 'Normal', leve: 'Leve'};
+  const est = (v, u, r, ic) => v ? `<div class="estat"><div class="v n">${v}<small>${u}</small></div><div class="r">${IC[ic]}${r}</div></div>` : '';
+  const SENS = {pesado: 'Pesado', normal: 'Normal', leve: 'Leve'};
   abrirFolha(`<h2>${fmtDataLonga(c.data)}</h2>
-    <p class="suave peq" style="margin:2px 0 14px">+${metros(c.alt1 - c.alt0)} m · de ${metros(c.alt0)} a ${metros(c.alt1)} m · ${Montanha.zonaDe(c.alt1).nome}${c.recorde ? ` · <b style="color:#ffb057">${c.recorde.toLowerCase()}</b>` : ''}</p>
-    <div class="estats">${est(km(c.dist, 2), 'km', 'Distância')}${est(fmtTempo(c.tempo), '', 'Tempo')}${est(fmtRitmo(ritmo(c)), '/km', 'Ritmo')}${est(c.desnivel ? metros(c.desnivel) : '', 'm', 'Desnível')}${est(c.fc ? Math.round(c.fc) : '', 'bpm', 'FC média')}${est(c.cal ? Math.round(c.cal) : '', 'kcal', 'Calorias')}</div>
-    ${c.cabra ? `<h3>A Cabra disse</h3><div class="citacao"><small>Cabra Velha</small><span id="txtCabra">${esc(c.cabra)}</span></div>` : '<h3>A Cabra</h3><div class="citacao"><small>Cabra Velha</small><span id="txtCabra" class="suave">Ainda não comentou esta.</span></div>'}
-    <button class="btn" style="margin-top:8px" data-acao="outraCabra" data-id="${c.id}">${c.cabra ? 'Pedir outro comentário' : 'Pedir comentário'}</button>
-    ${c.parciais && c.parciais.length ? `<h3>Parciais por km</h3>${svgParciais(c.parciais)}` : ''}
-    ${c.pontos && c.pontos.length > 1 ? `<h3>Percurso</h3>${svgPercurso(c.pontos)}` : ''}
-    <h3>Como foi</h3>
-    <div class="chips"><span class="chip on" style="background:${corEsforco(c.esforco)};color:#140b05;border:0">Esforço ${c.esforco}/10</span><span class="chip">${sim[c.sensacao] || '–'}</span><span class="chip">Sono ${c.sono || '–'}</span><span class="chip">Energia ${c.energia || '–'}</span></div>
-    ${c.dores && c.dores.length ? `<p style="color:#ff9b9b;margin:10px 0 0">Dores: ${c.dores.map(d => ZONAS_DOR[d]).join(', ')}</p>` : ''}
-    ${c.nota ? `<p class="suave" style="margin:10px 0 0">“${esc(c.nota)}”</p>` : ''}
+    <div class="detCab"><span class="tag fogo">+${metros(c.alt1 - c.alt0)} m</span><span class="tag"><i style="width:8px;height:8px;border-radius:50%;background:${COR_ZONA[Montanha.zonaDe(c.alt1).nome]}"></i>${Montanha.zonaDe(c.alt1).nome} · ${metros(c.alt1)} m</span>${c.recorde ? `<span class="tag ouro">${c.recorde.toLowerCase()}</span>` : ''}</div>
+    <div class="estats">
+      <div class="estat dest"><div><div class="v n">${km(c.dist, 2)}<small>KM</small></div><div class="r">${IC.dist}Distância</div></div><div style="text-align:right"><div class="v n" style="font-size:30px">${fmtRitmo(ritmo(c))}<small>/KM</small></div><div class="r" style="justify-content:flex-end">${IC.ritmo}Ritmo</div></div></div>
+      ${est(fmtTempo(c.tempo), '', 'Tempo', 'tempo')}${est(c.desnivel ? metros(c.desnivel) : '', 'm', 'Desnível', 'desnivel')}${est(c.fc ? Math.round(c.fc) : '', 'bpm', 'FC média', 'fc')}${est(c.cal ? Math.round(c.cal) : '', 'kcal', 'Calorias', 'cal')}
+      <div class="estat"><div class="v n" style="color:${corEsforco(c.esforco)}">${c.esforco || '–'}<small>/10</small></div><div class="r">${IC.raio}${c.esforco ? NOME_ESFORCO(c.esforco) : 'Esforço'}</div></div>
+    </div>
+    <div class="rotulo">A Cabra</div>
+    <div class="citacao">${avatar()}<div class="txt"><b>Cabra Velha</b><span id="txtCabra">${c.cabra ? esc(c.cabra) : '<i style="color:#7b6f60">Ainda não comentou esta.</i>'}</span><br><button class="btnC" data-acao="outraCabra" data-id="${c.id}">${c.cabra ? 'Outro comentário' : 'Pedir comentário'}</button></div></div>
+    ${c.parciais && c.parciais.length ? `<div class="rotulo">Parciais por km</div>${htmlParciais(c.parciais)}` : ''}
+    ${c.pontos && c.pontos.length > 1 ? `<div class="rotulo">Percurso</div>${svgPercurso(c.pontos)}` : ''}
+    <div class="rotulo">Como foi</div>
+    <div class="chips"><span class="chip">${IC[c.sensacao] || IC.normal}${SENS[c.sensacao] || '–'}</span><span class="chip">${IC[{mau: 'sonoMau', ok: 'sonoOk', bom: 'sonoBom'}[c.sono] || 'sonoOk']}Sono ${c.sono || '–'}</span><span class="chip">${IC[{baixa: 'bat1', 'média': 'bat2', alta: 'bat3'}[c.energia] || 'bat2']}Energia ${c.energia || '–'}</span></div>
+    ${c.dores && c.dores.length ? `<div style="margin-top:12px">${Corpo.svg(c.dores, {mini: true})}</div><div class="doresLista">${c.dores.map(d => `<span class="d">${esc(Corpo.nome(d))}</span>`).join('')}</div>` : '<p class="nota">Sem dores.</p>'}
+    ${c.nota ? `<p style="margin:14px 0 0;color:var(--txt2);font-style:italic">“${esc(c.nota)}”</p>` : ''}
     <div class="linhaBts"><button class="btn perigo" data-acao="apagar" data-id="${c.id}">Apagar</button><button class="btn" data-acao="editar" data-id="${c.id}">Editar</button></div>`);
 }
 
 /* ---------- progresso ---------- */
-function semanaDe(iso){ const d = dataObj(iso), k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k); return d.toISOString().slice(0, 10); }
+const segunda = iso => { const d = dataObj(iso), k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k); return isoDe(d); };
+function curva(pts){ // Catmull-Rom → Bézier
+  if (pts.length < 3) return pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+  let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++){
+    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    d += `C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(1)} ${(p1[1] + (p2[1] - p0[1]) / 6).toFixed(1)} ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(1)} ${(p2[1] - (p3[1] - p1[1]) / 6).toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return d;
+}
+function svgPerfil(l){
+  const W = 360, H = 200, pl = 6, pr = 44, pt = 20, pb = 24, hoje = dataObj(hojeISO());
+  const t0 = dataObj(l[0].data) - 864e5 * 2, t1 = Math.max(+hoje, dataObj(l[l.length - 1].data)) + 864e5;
+  const topo = l[l.length - 1].alt1, maxY = Math.max(2000, topo * 1.18);
+  const X = t => pl + (t - t0) / (t1 - t0) * (W - pl - pr), Y = a => H - pb - a / maxY * (H - pt - pb);
+  const pts = [[X(t0), Y(0)], ...l.map(c => [X(+dataObj(c.data)), Y(c.alt1)])];
+  if (+hoje > +dataObj(l[l.length - 1].data)) pts.push([X(+hoje), Y(topo)]);
+  // degraus suaves: a altitude só sobe
+  let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++){ const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], mx = x0 + (x1 - x0) * .55; d += `C${mx.toFixed(1)} ${y0.toFixed(1)} ${mx.toFixed(1)} ${y1.toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}`; }
+  const zonas = Montanha.ZONAS.filter(z => z.alt > 0 && z.alt < maxY).map(z => `<path d="M${pl} ${Y(z.alt).toFixed(1)}H${W - pr + 4}" stroke="${COR_ZONA[z.nome]}" stroke-opacity=".35" stroke-dasharray="2 5"/><text x="${W - pr + 8}" y="${(Y(z.alt) + 3.5).toFixed(1)}" style="fill:${COR_ZONA[z.nome]};opacity:.85">${z.alt / 1000}K</text>`).join('');
+  const meses = []; const dm = new Date(t0); dm.setDate(1); dm.setMonth(dm.getMonth() + 1);
+  for (; +dm < t1; dm.setMonth(dm.getMonth() + 1)) meses.push(`<text x="${X(+dm).toFixed(1)}" y="${H - 6}" text-anchor="middle">${MESES[dm.getMonth()].toUpperCase()}</text><path d="M${X(+dm).toFixed(1)} ${H - pb}v4" stroke="rgba(255,255,255,.2)"/>`);
+  const [ux, uy] = [X(+dataObj(l[l.length - 1].data)), Y(topo)];
+  return `<svg class="grafico" viewBox="0 0 ${W} ${H}"><defs>
+    <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8a3d" stop-opacity=".5"/><stop offset=".6" stop-color="#ff8a3d" stop-opacity=".08"/><stop offset="1" stop-color="#ff8a3d" stop-opacity="0"/></linearGradient>
+    <linearGradient id="gL" x1="0" x2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset="1" stop-color="#ff7a2f"/></linearGradient>
+    <filter id="gB"><feGaussianBlur stdDeviation="5"/></filter></defs>
+    ${zonas}
+    <path d="${d}L${pts[pts.length - 1][0].toFixed(1)} ${H - pb}L${pts[0][0].toFixed(1)} ${H - pb}Z" fill="url(#gA)"/>
+    <path d="${d}" fill="none" stroke="#ff7a2f" stroke-width="6" opacity=".45" filter="url(#gB)"/>
+    <path d="${d}" fill="none" stroke="url(#gL)" stroke-width="2.6" stroke-linecap="round" class="anima-linha" style="--l:1400"/>
+    ${l.map(c => `<circle cx="${X(+dataObj(c.data)).toFixed(1)}" cy="${Y(c.alt1).toFixed(1)}" r="2.6" fill="#0e1624" stroke="#ffd27a" stroke-width="1.4"/>`).join('')}
+    <circle cx="${ux.toFixed(1)}" cy="${uy.toFixed(1)}" r="11" fill="#ff7a2f" opacity=".2"><animate attributeName="r" values="7;13;7" dur="2.4s" repeatCount="indefinite"/></circle>
+    <circle cx="${ux.toFixed(1)}" cy="${uy.toFixed(1)}" r="5.5" fill="#ff7a2f" stroke="#fff3e6" stroke-width="2"/>
+    <path d="M${pl} ${H - pb}H${W - pr + 4}" stroke="rgba(255,255,255,.12)"/>${meses}</svg>`;
+}
+function htmlCalendario(l){
+  const SEM = 18, porDia = {}; l.forEach(c => porDia[c.data] = (porDia[c.data] || 0) + c.dist);
+  const ini = dataObj(segunda(hojeISO())); ini.setDate(ini.getDate() - 7 * (SEM - 1));
+  const cs = 15, g = 3.5, W = 22 + SEM * (cs + g), H = 18 + 7 * (cs + g), hoje = hojeISO();
+  const cor = k => !k ? 'rgba(255,255,255,.06)' : k < 3 ? '#6e3a1e' : k < 6 ? '#b4531f' : k < 10 ? '#ff7a2f' : '#ffc070';
+  let cel = '', mesAnt = -1, meses = '';
+  for (let s = 0; s < SEM; s++){
+    for (let d = 0; d < 7; d++){
+      const dt = new Date(ini); dt.setDate(dt.getDate() + s * 7 + d); const iso = isoDe(dt);
+      if (iso > hoje) continue;
+      const x = 22 + s * (cs + g), y = 18 + d * (cs + g), k = porDia[iso] || 0;
+      cel += `<rect x="${x}" y="${y}" width="${cs}" height="${cs}" rx="4" fill="${cor(k)}"${iso === hoje ? ' stroke="#fff" stroke-width="1.5"' : ''}><title>${fmtData(iso)}${k ? ` · ${km(k)} km` : ''}</title></rect>`;
+      if (d === 0 && dt.getMonth() !== mesAnt){ mesAnt = dt.getMonth(); meses += `<text x="${x}" y="11">${MESES[mesAnt].toUpperCase()}</text>`; }
+    }
+  }
+  const dias = ['S', '', 'Q', '', 'S', '', 'D'].map((t, i) => t ? `<text x="4" y="${18 + i * (cs + g) + 11.5}">${t}</text>` : '').join('');
+  // semanas seguidas com pelo menos uma corrida
+  const semanas = new Set(l.map(c => segunda(c.data)));
+  let seq = 0; const s0 = dataObj(segunda(hoje));
+  if (!semanas.has(isoDe(s0))) s0.setDate(s0.getDate() - 7);
+  while (semanas.has(isoDe(s0))){ seq++; s0.setDate(s0.getDate() - 7); }
+  const d30 = new Date(); d30.setDate(d30.getDate() - 30); const ult30 = l.filter(c => c.data > isoDe(d30)).length;
+  return {svg: `<svg class="grafico" viewBox="0 0 ${W} ${H}">${meses}${dias}${cel}</svg>`, seq, ult30};
+}
+function svgSemanas(l){
+  const sem0 = segunda(hojeISO()), sems = [];
+  for (let i = 11; i >= 0; i--){ const d = dataObj(sem0); d.setDate(d.getDate() - 7 * i); sems.push(isoDe(d)); }
+  const v = sems.map(s => l.filter(c => segunda(c.data) === s).reduce((a, c) => a + c.dist, 0));
+  const ativas = v.filter(x => x > 0), media = ativas.length ? ativas.reduce((a, b) => a + b, 0) / ativas.length : 0;
+  const W = 360, H = 170, pb = 22, pt = 18, mx = Math.max(5, ...v) * 1.1, bw = (W - 8) / 12 - 7;
+  const Y = k => H - pb - k / mx * (H - pb - pt);
+  const barras = v.map((k, i) => { const x = 4 + i * (bw + 7), y = Y(k), h = H - pb - y, cur = i === 11, d = dataObj(sems[i]);
+    return `${k ? `<rect class="anima-barra" style="animation-delay:${i * 35}ms;transform-box:fill-box" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(3, h).toFixed(1)}" rx="6" fill="${cur ? 'url(#bC)' : 'url(#bN)'}"/>` : `<rect x="${x.toFixed(1)}" y="${H - pb - 3}" width="${bw.toFixed(1)}" height="3" rx="1.5" fill="rgba(255,255,255,.1)"/>`}
+      ${k ? `<text x="${(x + bw / 2).toFixed(1)}" y="${(y - 5).toFixed(1)}" text-anchor="middle" style="fill:${cur ? '#ffb15c' : 'var(--txt2)'}">${km(k, k < 10 ? 1 : 0)}</text>` : ''}
+      ${i % 3 === 2 || cur ? `<text x="${(x + bw / 2).toFixed(1)}" y="${H - 5}" text-anchor="middle">${cur ? 'ESTA' : d.getDate() + ' ' + MESES[d.getMonth()].toUpperCase()}</text>` : ''}`; }).join('');
+  const linhaMedia = media ? `<path d="M0 ${Y(media).toFixed(1)}H${W}" stroke="rgba(255,255,255,.35)" stroke-dasharray="4 5"/><text x="${W}" y="${(Y(media) - 5).toFixed(1)}" text-anchor="end" style="fill:var(--txt2)">MÉDIA ${km(media)}</text>` : '';
+  return `<svg class="grafico" viewBox="0 0 ${W} ${H}"><defs><linearGradient id="bC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffc070"/><stop offset="1" stop-color="#ff7a2f"/></linearGradient><linearGradient id="bN" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fd0ff" stop-opacity=".75"/><stop offset="1" stop-color="#9fd0ff" stop-opacity=".22"/></linearGradient></defs>${linhaMedia}${barras}</svg>`;
+}
+function svgRitmo(l){
+  const ul = l.slice(-16).filter(c => ritmo(c)); if (ul.length < 2) return {svg: '<p class="nota">Precisas de pelo menos duas corridas.</p>', delta: 0};
+  const rs = ul.map(ritmo), rMin = Math.min(...rs), rMax = Math.max(...rs), pad = Math.max(8, (rMax - rMin) * .15);
+  const W = 360, H = 170, pl = 38, pr = 10, pt = 14, pb = 16;
+  const X = i => pl + i * (W - pl - pr) / (ul.length - 1), Y = r => pt + (r - (rMin - pad)) / ((rMax + pad) - (rMin - pad)) * (H - pt - pb);
+  const pts = ul.map((c, i) => [X(i), Y(rs[i])]), d = curva(pts);
+  // tendência (regressão linear)
+  const n = rs.length, mxI = (n - 1) / 2, my = rs.reduce((a, b) => a + b, 0) / n;
+  const b = rs.reduce((s, r, i) => s + (i - mxI) * (r - my), 0) / rs.reduce((s, r, i) => s + (i - mxI) ** 2, 0), a0 = my - b * mxI;
+  const delta = Math.round(b * (n - 1)); // segundos/km entre a primeira e a última
+  const grelha = [rMin, (rMin + rMax) / 2, rMax].map(r => `<path d="M${pl} ${Y(r).toFixed(1)}H${W - pr}" stroke="rgba(255,255,255,.06)"/><text x="0" y="${(Y(r) + 3.5).toFixed(1)}">${fmtRitmo(r)}</text>`).join('');
+  return {delta, svg: `<svg class="grafico" viewBox="0 0 ${W} ${H}"><defs><linearGradient id="rA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fd0ff" stop-opacity=".32"/><stop offset="1" stop-color="#9fd0ff" stop-opacity="0"/></linearGradient></defs>
+    ${grelha}<path d="${d}L${pts[pts.length - 1][0].toFixed(1)} ${H - pb}L${pl} ${H - pb}Z" fill="url(#rA)"/>
+    <path d="M${X(0).toFixed(1)} ${Y(a0).toFixed(1)}L${X(n - 1).toFixed(1)} ${Y(a0 + b * (n - 1)).toFixed(1)}" stroke="${delta <= 0 ? '#7fd6a0' : '#ffb15c'}" stroke-width="1.6" stroke-dasharray="5 5" opacity=".9"/>
+    <path d="${d}" fill="none" stroke="#9fd0ff" stroke-width="2.4" stroke-linecap="round" class="anima-linha" style="--l:1200"/>
+    ${pts.map((p, i) => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="4.6" fill="${corEsforco(ul[i].esforco)}" stroke="#0e1624" stroke-width="2"/>`).join('')}</svg>`};
+}
 function renderProgresso(){
   const l = preparar(), v = $('#vProgresso');
-  if (!l.length){ v.innerHTML = `<h1 class="tit">Progresso</h1><div class="vazio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 20l7-12 4 6 3-4 6 10z"/></svg><p>Ainda não há corridas.<br>Toca no + depois da próxima.</p></div>`; return; }
-  const tot = l.reduce((s, c) => s + c.dist, 0), sem0 = semanaDe(hojeISO());
-  const semanas = []; for (let i = 11; i >= 0; i--){ const d = dataObj(sem0); d.setDate(d.getDate() - 7 * i); semanas.push(d.toISOString().slice(0, 10)); }
-  const porSem = semanas.map(s => l.filter(c => semanaDe(c.data) === s).reduce((a, c) => a + c.dist, 0));
-  const estaSem = porSem[11];
-  // gráfico semanal
-  const W = 340, H = 140, mx = Math.max(5, ...porSem), bw = (W - 20) / 12 - 6;
-  const barras = porSem.map((k, i) => { const h = k ? Math.max(3, (H - 30) * k / mx) : 0, x = 10 + i * (bw + 6); const d = dataObj(semanas[i]);
-    return `<rect x="${x}" y="${H - 18 - h}" width="${bw}" height="${h}" rx="4" fill="${i === 11 ? '#ff8a3d' : '#9cc3e6'}" opacity="${i === 11 ? 1 : .6}"/>${k ? `<text x="${x + bw / 2}" y="${H - 22 - h}" text-anchor="middle">${km(k, k < 10 ? 1 : 0)}</text>` : ''}${i % 2 ? '' : `<text x="${x + bw / 2}" y="${H - 4}" text-anchor="middle">${d.getDate()}/${d.getMonth() + 1}</text>`}`; }).join('');
-  // ritmo das últimas corridas (para cima = mais rápido)
-  const ul = l.slice(-15).filter(c => ritmo(c)), rs = ul.map(ritmo), rMin = Math.min(...rs), rMax = Math.max(...rs), PH = 150;
-  const px = i => 24 + i * (W - 40) / Math.max(1, ul.length - 1), py = r => 16 + (PH - 40) * (rMax === rMin ? .5 : (r - rMin) / (rMax - rMin));
-  const linha = ul.length > 1 ? `<polyline points="${ul.map((c, i) => `${px(i).toFixed(1)},${py(rs[i]).toFixed(1)}`).join(' ')}" fill="none" stroke="#9cc3e6" stroke-width="2" stroke-linejoin="round"/>` : '';
-  const pontos = ul.map((c, i) => `<circle cx="${px(i).toFixed(1)}" cy="${py(rs[i]).toFixed(1)}" r="4.5" fill="${corEsforco(c.esforco)}"/>`).join('');
-  // recordes
+  if (!l.length){ v.innerHTML = `<div class="cab"><div><h1>Progresso</h1><p>Ainda não há corridas.</p></div></div><div class="cartao vazio">${avatar(true)}<p style="margin:14px 0 0">A Cabra está à espera da primeira subida.<br>Toca no + depois da próxima corrida.</p></div>`; v.querySelector('.av').style.margin = '0 auto'; return; }
+  const tot = l.reduce((s, c) => s + c.dist, 0), topo = l[l.length - 1].alt1, sem0 = segunda(hojeISO());
+  const estaSem = l.filter(c => segunda(c.data) === sem0).reduce((s, c) => s + c.dist, 0);
+  const cal = htmlCalendario(l), rit = svgRitmo(l);
   const maior = (f, filtro = () => true) => l.filter(filtro).reduce((m, c) => !m || f(c) > f(m) ? c : m, null);
   const menor = (f, filtro = () => true) => l.filter(filtro).reduce((m, c) => !m || f(c) < f(m) ? c : m, null);
   const longa = maior(c => c.dist), rapida = menor(ritmo, c => c.dist >= 3 && ritmo(c)), cinco = menor(ritmo, c => c.dist >= 5 && ritmo(c)), dez = menor(ritmo, c => c.dist >= 10 && ritmo(c)), subida = maior(c => +c.desnivel || 0, c => +c.desnivel > 0);
-  const rec = (t, val, c) => c ? `<button class="recorde" data-acao="detalhe" data-id="${c.id}" style="width:100%;color:inherit;text-align:left"><span>${t}<br><span class="suave mini">${fmtData(c.data)}</span></span><b>${val}</b></button>` : '';
-  v.innerHTML = `<h1 class="tit">Progresso</h1>
-    <div class="grelha">
-      <div class="cartao"><div class="num">${metros(l[l.length - 1].alt1)}<small>m</small></div><div class="rot">Altitude</div></div>
-      <div class="cartao"><div class="num">${km(tot)}<small>km</small></div><div class="rot">Total</div></div>
-      <div class="cartao"><div class="num">${l.length}</div><div class="rot">Corridas</div></div>
-      <div class="cartao"><div class="num">${km(estaSem)}<small>km</small></div><div class="rot">Esta semana</div></div>
-    </div>
-    <h2 class="sec">Quilómetros por semana</h2>
-    <div class="cartao"><svg class="grafico" viewBox="0 0 ${W} ${H}">${barras}</svg></div>
-    <h2 class="sec">Ritmo das últimas corridas</h2>
-    <div class="cartao"><svg class="grafico" viewBox="0 0 ${W} ${PH}"><text x="2" y="20">${fmtRitmo(rMin)}</text><text x="2" y="${PH - 22}">${fmtRitmo(rMax)}</text>${linha}${pontos}</svg>
-      <p class="suave mini" style="margin:6px 0 0">Mais acima é mais rápido. A cor de cada ponto é o esforço que sentiste.</p></div>
-    <h2 class="sec">Recordes</h2>
-    <div class="recordes">${rec('Corrida mais longa', km(longa.dist, 2) + ' km', longa)}${rec('Melhor ritmo (3 km ou mais)', fmtRitmo(ritmo(rapida || {})) + ' /km', rapida)}${rec('Melhor 5 km (estimado)', cinco ? fmtTempo(ritmo(cinco) * 5) : '', cinco)}${rec('Melhor 10 km (estimado)', dez ? fmtTempo(ritmo(dez) * 10) : '', dez)}${rec('Mais desnível', subida ? metros(subida.desnivel) + ' m' : '', subida)}</div>
-    <h2 class="sec">Todas as corridas</h2>
-    <div class="lstCorr">${l.slice().reverse().map(c => { const d = dataObj(c.data); return `<button class="itemCorr" data-acao="detalhe" data-id="${c.id}"><div class="d"><b>${d.getDate()}</b><span>${MESES[d.getMonth()]}</span></div><div class="m"><b>${km(c.dist, 2)} km</b><span>${fmtTempo(c.tempo)} · ${fmtRitmo(ritmo(c))} /km${c.recorde ? ' · ' + c.recorde.toLowerCase() : ''}</span></div><span class="e" style="background:${corEsforco(c.esforco)}">${c.esforco}</span></button>`; }).join('')}</div>`;
+  const rec = (t, val, u, c, ic) => c ? `<button class="rec" data-acao="detalhe" data-id="${c.id}"><div class="ic">${IC[ic]}</div><div class="v n">${val}<small>${u}</small></div><div class="r">${t}</div><div class="d">${fmtData(c.data)}</div></button>` : '';
+  const kpi = (val, u, r, ic, c, k) => `<div class="cartao kpi"><div class="ic" style="--c:${c};--k:${k}">${IC[ic]}</div><div class="v n">${val}<small>${u}</small></div><div class="r">${r}</div></div>`;
+  v.innerHTML = `<div class="cab"><div><h1>Progresso</h1><p>Desde ${fmtData(l[0].data)} · ${l.length} corridas</p></div></div>
+    <div class="cartao heroi"><div class="cTit"><b>Perfil da escalada</b><span>${Montanha.zonaDe(topo).nome.toUpperCase()}</span></div>${svgPerfil(l)}</div>
+    <div class="kpis">${kpi(metros(topo), 'M', 'Altitude', 'alt', 'rgba(255,122,47,.15)', '#ffb15c')}${kpi(km(tot), 'KM', 'Total', 'dist', 'rgba(159,208,255,.13)', '#9fd0ff')}${kpi(l.length, '', 'Corridas', 'corridas', 'rgba(127,214,160,.13)', '#7fd6a0')}${kpi(km(estaSem), 'KM', 'Esta semana', 'semana', 'rgba(255,210,122,.13)', '#ffd27a')}</div>
+    <div class="cartao"><div class="cTit"><b>Consistência</b><span>${cal.ult30} CORRIDAS EM 30 DIAS</span></div>${cal.svg}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><span class="insight${cal.seq ? '' : ' mau'}">${cal.seq ? `${cal.seq} ${cal.seq === 1 ? 'semana seguida' : 'semanas seguidas'} a correr` : 'Sem corridas esta semana nem na anterior'}</span>
+      <span class="legenda">MENOS <i style="background:rgba(255,255,255,.06)"></i><i style="background:#6e3a1e"></i><i style="background:#b4531f"></i><i style="background:#ff7a2f"></i><i style="background:#ffc070"></i> MAIS</span></div></div>
+    <div class="cartao" style="margin-top:10px"><div class="cTit"><b>Quilómetros por semana</b><span>12 SEMANAS</span></div>${svgSemanas(l)}</div>
+    <div class="cartao" style="margin-top:10px"><div class="cTit"><b>Ritmo</b><span>ÚLTIMAS ${Math.min(16, l.length)}</span></div>${rit.svg}
+      ${rit.delta ? `<span class="insight${rit.delta > 0 ? ' mau' : ''}">${rit.delta < 0 ? IC.sobe : IC.desce}${Math.abs(rit.delta)} s/km ${rit.delta < 0 ? 'mais rápido' : 'mais lento'} na tendência</span>` : ''}
+      <p class="nota">Mais acima é mais rápido. A cor de cada ponto é o esforço que sentiste.</p></div>
+    <div class="rotulo">Recordes</div>
+    <div class="recs">${rec('Mais longa', km(longa.dist, 2), 'KM', longa, 'trofeu')}${rec('Melhor ritmo', fmtRitmo(ritmo(rapida)), '/KM', rapida, 'raio')}${rec('Melhor 5 km', cinco ? fmtTempo(ritmo(cinco) * 5) : '', '', cinco, 'tempo')}${rec('Melhor 10 km', dez ? fmtTempo(ritmo(dez) * 10) : '', '', dez, 'tempo')}${rec('Mais desnível', subida ? metros(subida.desnivel) : '', 'M', subida, 'desnivel')}</div>
+    <p class="nota">Os tempos de 5 e 10 km são estimados a partir do ritmo de corridas com essa distância ou mais.</p>
+    <div class="rotulo">Todas as corridas</div>
+    <div class="lstCorr">${l.slice().reverse().map(c => { const d = dataObj(c.data); return `<button class="itemCorr" data-acao="detalhe" data-id="${c.id}"><div class="d"><b>${d.getDate()}</b><span>${MESES[d.getMonth()]}</span></div><div class="m"><b class="n">${km(c.dist, 2)}<small>KM</small></b><span>${fmtTempo(c.tempo)} · ${fmtRitmo(ritmo(c))} /km${c.recorde ? ' · ' + c.recorde.toLowerCase() : ''}</span></div><span class="e" style="background:${corEsforco(c.esforco)}">${c.esforco || '–'}</span></button>`; }).join('')}</div>`;
 }
 
 /* ---------- perfil ---------- */
 function renderPerfil(){
   const orig = !cfg.chave && IA.origemChave(cfg.chave);
-  $('#vPerfil').innerHTML = `<h1 class="tit">Perfil</h1>
+  $('#vPerfil').innerHTML = `<div class="cab"><div><h1>Perfil</h1><p>${esc(cfg.nome || 'Sem nome')} · os dados ficam só neste telemóvel</p></div></div>
     <div class="cartao">
       <label class="campo" style="margin-top:0"><span>O teu nome</span><input type="text" id="pNome" value="${esc(cfg.nome)}" placeholder="Como a Cabra te chama"></label>
-      <span class="suave mini">Tom da Cabra Velha</span>
-      <div class="chips" style="margin-top:6px">${Object.entries(TONS).map(([k, r]) => `<button class="chip${cfg.tom === k ? ' on' : ''}" data-acao="tom" data-v="${k}">${r}</button>`).join('')}</div>
-      <p class="suave mini" style="margin:8px 0 0">${{suave: 'Provoca com carinho.', picante: 'Insultos sarcásticos, sem palavrões.', semfiltro: 'Com palavrões. Avisado estás.'}[cfg.tom]}</p>
+      <div class="rotulo" style="margin-top:18px">Tom da Cabra Velha</div>
+      <div class="tons">${Object.entries(TONS).map(([k, [r, d, ex]]) => `<button class="tom${cfg.tom === k ? ' on' : ''}" data-acao="tom" data-v="${k}"><b>${r}</b><span>${d} “${ex}”</span></button>`).join('')}</div>
     </div>
-    <h2 class="sec">IA (Gemini)</h2>
+    <div class="rotulo">IA (Gemini)</div>
     <div class="cartao">
       <label class="campo" style="margin-top:0"><span>Chave do Gemini (opcional)</span><input type="password" id="pChave" value="${esc(cfg.chave)}" placeholder="AIza…" autocomplete="off"></label>
-      <p class="suave mini" style="margin:0">${orig ? `Sem chave própria: a usar a chave ${orig === 'outra app tua' ? 'de outra app tua' : 'da ' + esc(orig)}, neste aparelho.` : cfg.chave ? 'A usar a tua chave.' : IA.temGroq() ? 'Sem chave do Gemini: a IA usa o Groq de reserva.' : 'Cria uma chave gratuita em aistudio.google.com (Get API key). Se já tiveres a Garfada, a Forja ou a Nascente neste telemóvel, a Vertente usa a mesma chave sozinha.'}</p>
-      <button class="btn" style="margin-top:10px" data-acao="guardarPerfil">Guardar</button>
+      <p class="nota">${orig ? `Sem chave própria: a usar a chave ${orig === 'outra app tua' ? 'de outra app tua' : 'da ' + esc(orig)}, neste aparelho.` : cfg.chave ? 'A usar a tua chave.' : IA.temGroq() ? 'Sem chave do Gemini: a IA usa o Groq de reserva.' : 'Cria uma chave gratuita em aistudio.google.com (Get API key). Se já tiveres a Garfada, a Forja ou a Nascente neste telemóvel, a Vertente usa a mesma chave sozinha.'}</p>
+      <button class="btn peq" style="margin-top:12px" data-acao="guardarPerfil">Guardar</button>
     </div>
-    <h2 class="sec">IA de reserva (Groq)</h2>
-    <div class="cartao">${IA.htmlGroq({sub: 'suave mini', campo: 'campo', pri: 'btn', div: true})}</div>
-    <h2 class="sec">Cópia de segurança</h2>
-    <div class="cartao"><p class="suave mini" style="margin:0 0 10px">Os dados vivem só neste telemóvel. Guarda uma cópia de vez em quando.</p>
-      <div class="linhaBts" style="margin:0"><button class="btn" data-acao="exportar">Exportar</button><button class="btn" data-acao="importar">Importar</button></div></div>
-    <h2 class="sec">Sobre</h2>
-    <div class="cartao peq suave">
-      <p style="margin:0 0 8px">Cada quilómetro que corres são ${ALT_POR_KM} metros de altitude. A montanha não tem cume.</p>
-      <p style="margin:0 0 8px">Instala a Vertente no ecrã principal (menu do Chrome → Adicionar ao ecrã principal) para poderes partilhar os prints do Strava diretamente para ela.</p>
-      <button class="btn perigo" data-acao="apagarTudo">Apagar todos os dados</button>
+    <div class="rotulo">IA de reserva (Groq)</div>
+    <div class="cartao">${IA.htmlGroq({sub: 'nota', campo: 'campo', pri: 'btn peq', div: true})}</div>
+    <div class="rotulo">Cópia de segurança</div>
+    <div class="cartao"><p class="nota" style="margin:0 0 12px">Os dados vivem só neste telemóvel. Guarda uma cópia de vez em quando.</p>
+      <div class="linhaBts" style="margin:0"><button class="btn peq" data-acao="exportar">Exportar</button><button class="btn peq" data-acao="importar">Importar</button></div></div>
+    <div class="rotulo">Sobre</div>
+    <div class="cartao">
+      <p class="nota" style="margin:0 0 8px">Cada quilómetro que corres são ${ALT_POR_KM} metros de altitude. A montanha não tem cume.</p>
+      <p class="nota" style="margin:0 0 14px">Instala a Vertente no ecrã principal (menu do Chrome, Adicionar ao ecrã principal) para partilhares os prints do Strava diretamente para ela.</p>
+      <button class="btn peq perigo" data-acao="apagarTudo">Apagar todos os dados</button>
     </div>`;
 }
 
 /* ---------- boas-vindas ---------- */
 function boasVindas(){
-  abrirFolha(`<h2>Quem vem lá?</h2><p class="suave" style="margin:2px 0 14px">A Cabra Velha guarda esta montanha há cem anos. Antes de subires, quer saber com quem está a falar.</p>
+  abrirFolha(`<div style="display:flex;justify-content:center;margin:4px 0 10px">${avatar(true)}</div>
+    <h2 style="text-align:center">Quem vem lá?</h2><p class="sub" style="text-align:center">A Cabra Velha guarda esta montanha há cem anos. Antes de subires, quer saber com quem está a falar.</p>
     <label class="campo"><span>O teu nome</span><input type="text" id="bNome" placeholder="Nome" autocomplete="given-name"></label>
-    <span class="suave mini">Como queres que ela te trate?</span>
-    <div class="chips" style="margin:6px 0 4px">${Object.entries(TONS).map(([k, r]) => `<button class="chip${cfg.tom === k ? ' on' : ''}" data-acao="tomBV" data-v="${k}">${r}</button>`).join('')}</div>
-    <p class="suave mini" id="bTomTxt" style="margin:4px 0 0">${{suave: 'Provoca com carinho.', picante: 'Insultos sarcásticos, sem palavrões.', semfiltro: 'Com palavrões.'}[cfg.tom]}</p>
+    <div class="rotulo">Como queres que ela te trate?</div>
+    <div class="tons">${Object.entries(TONS).map(([k, [r, d, ex]]) => `<button class="tom${cfg.tom === k ? ' on' : ''}" data-acao="tomBV" data-v="${k}"><b>${r}</b><span>${d} “${ex}”</span></button>`).join('')}</div>
     <div class="linhaBts"><button class="btn pri larg" data-acao="comecar">Começar a subir</button></div>`);
 }
 
@@ -476,21 +608,32 @@ function boasVindas(){
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-acao],[data-vista],[data-dor]'); if (!b) return;
   if (b.dataset.vista){ irVista(b.dataset.vista); return; }
-  if (b.dataset.dor){ const d = b.dataset.dor, i = novo.dores.indexOf(d); i < 0 ? novo.dores.push(d) : novo.dores.splice(i, 1); b.classList.toggle('on', i < 0); $('#listaDores').innerHTML = listaDores(); document.querySelector('[data-acao="semDores"]').classList.toggle('on', !novo.dores.length); return; }
+  if (b.dataset.dor){
+    if (!novo || b.closest('.mini')) return;
+    const d = b.dataset.dor, i = novo.dores.indexOf(d); i < 0 ? novo.dores.push(d) : novo.dores.splice(i, 1);
+    document.querySelectorAll(`.corpo [data-dor="${d}"]`).forEach(x => x.classList.toggle('on', i < 0));
+    $('#listaDores').innerHTML = listaDores(); return;
+  }
   const a = b.dataset.acao, id = b.dataset.id;
   switch (a){
     case 'fechar': fecharFolha(); break;
     case 'topo': Montanha.irTopo(); break;
     case 'registar': abrirRegisto(); break;
+    case 'cabra': irVista('vMontanha'); Montanha.irTopo(); setTimeout(() => mostrarBalao(falaDoMomento(lista, true)), 350); break;
     case 'escFoto': $('#fFoto').value = ''; $('#fFoto').click(); break;
     case 'escGpx': $('#fGpx').value = ''; $('#fGpx').click(); break;
-    case 'escMao': if (!novo) abrirRegisto(); novo.origem = novo.origem === 'foto' ? 'foto' : 'manual'; passoDados(); break;
+    case 'escMao': if (!novo) abrirRegisto(); passoDados(); break;
     case 'cancelarIA': IA.cancelar(); abrirRegisto(); break;
     case 'dadosOk': if (lerDados()) passoPerguntas(); break;
     case 'voltarDados': novo.nota = ($('#cNota').value || '').trim(); passoDados(); break;
-    case 'esforco': novo.esforco = +b.dataset.v; document.querySelectorAll('.escala button').forEach(x => { const on = +x.dataset.v === novo.esforco; x.classList.toggle('on', on); x.style.background = on ? corEsforco(novo.esforco) : ''; }); $('#erroPerg').hidden = true; break;
+    case 'esforco':
+      novo.esforco = +b.dataset.v;
+      document.querySelectorAll('.esforco button').forEach(x => { const v = +x.dataset.v; x.classList.toggle('on', v === novo.esforco); x.classList.toggle('antes', v < novo.esforco); });
+      $('#esforcoInfo').innerHTML = `<b style="color:${corEsforco(novo.esforco)}">${novo.esforco}</b><span>${NOME_ESFORCO(novo.esforco)}</span>`; $('#erroPerg').hidden = true;
+      if (navigator.vibrate) navigator.vibrate(8);
+      break;
     case 'perg': novo[b.dataset.g] = b.dataset.v; b.parentElement.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === b)); break;
-    case 'semDores': novo.dores = []; document.querySelectorAll('.corpo .zona').forEach(x => x.classList.remove('on')); $('#listaDores').innerHTML = listaDores(); b.classList.add('on'); break;
+    case 'semDores': novo.dores = []; document.querySelectorAll('.corpo .z').forEach(x => x.classList.remove('on')); $('#listaDores').innerHTML = listaDores(); break;
     case 'guardar': guardarCorrida(); break;
     case 'detalhe': abrirDetalhe(id); break;
     case 'editar': {
@@ -502,18 +645,18 @@ document.addEventListener('click', async e => {
       dados.corridas = dados.corridas.filter(x => x.id !== id); guardarDados(); fecharFolha(); atualizarMontanha(); Montanha.irTopo(); if (vistaAtual === 'vProgresso') renderProgresso(); avisar('Corrida apagada.'); break;
     case 'outraCabra': {
       if (!IA.temIA(cfg.chave)){ avisar('Põe a chave da IA no Perfil.'); break; }
-      const t = $('#txtCabra'); t.className = ''; t.innerHTML = '<span class="pontos" style="display:inline-flex;gap:4px"><i style="width:6px;height:6px;border-radius:50%;background:#a0561f;animation:pulso 1s infinite"></i></span> a resmungar…'; b.disabled = true;
+      const t = $('#txtCabra'); t.innerHTML = '<span class="pontos"><i></i><i></i><i></i></span>'; b.disabled = true;
       try { const txt = await pedirComentario(id); const c = dados.corridas.find(x => x.id === id); if (c && txt){ c.cabra = txt; guardarDados(); lista = preparar(); } t.textContent = txt || 'A Cabra ficou calada.'; }
       catch(err){ t.textContent = err.message || 'A IA não respondeu.'; }
       b.disabled = false; break;
     }
-    case 'tom': cfg.tom = b.dataset.v; guardarCfg(); renderPerfil(); break;
+    case 'tom': cfg.tom = b.dataset.v; guardarCfg(); document.querySelectorAll('.tom').forEach(x => x.classList.toggle('on', x === b)); break;
     case 'guardarPerfil': cfg.nome = $('#pNome').value.trim(); cfg.chave = $('#pChave').value.trim(); guardarCfg(); renderPerfil(); avisar('Guardado.'); break;
     case 'irPerfil': fecharFolha(); irVista('vPerfil'); break;
-    case 'tomBV': cfg.tom = b.dataset.v; b.parentElement.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === b)); $('#bTomTxt').textContent = {suave: 'Provoca com carinho.', picante: 'Insultos sarcásticos, sem palavrões.', semfiltro: 'Com palavrões.'}[cfg.tom]; break;
+    case 'tomBV': cfg.tom = b.dataset.v; document.querySelectorAll('.tom').forEach(x => x.classList.toggle('on', x === b)); break;
     case 'comecar': {
       const n = $('#bNome').value.trim(); if (!n){ $('#bNome').focus(); break; }
-      cfg.nome = n; guardarCfg(); fecharFolha(); mostrarBalao(esc(falaDoMomento(lista, true))); break;
+      cfg.nome = n; guardarCfg(); fecharFolha(); mostrarBalao(falaDoMomento(lista, true)); break;
     }
     case 'exportar': {
       const blob = new Blob([JSON.stringify({app: 'vertente', versao: 1, exportado: new Date().toISOString(), cfg: {nome: cfg.nome, tom: cfg.tom}, corridas: dados.corridas}, null, 1)], {type: 'application/json'});
@@ -537,7 +680,7 @@ $('#fBackup').addEventListener('change', async e => {
     if (!confirm(`Importar ${validas.length} corridas? As que já existem são substituídas.`)) return;
     const mapa = new Map(dados.corridas.map(c => [c.id, c])); validas.forEach(c => mapa.set(c.id, c));
     dados.corridas = [...mapa.values()]; guardarDados(); atualizarMontanha(); Montanha.irTopo(false); avisar(`${validas.length} corridas importadas.`);
-  } catch(err){ avisar(err.message || 'Ficheiro inválido.'); }
+  } catch(err){ avisar(esc(err.message || 'Ficheiro inválido.')); }
 });
 
 /* ---------- partilha (Strava → Vertente) ---------- */

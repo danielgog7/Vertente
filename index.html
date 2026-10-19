@@ -3,26 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b1016">
+<meta name="theme-color" content="#070b12">
 <meta name="description" content="Vertente: cada quilómetro que corres é altitude numa montanha sem cume.">
 <title>Vertente</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preload" href="fontes/barlow-condensed-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fontes/inter.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="estilo.css">
 </head>
 <body>
-<canvas id="montanha" aria-label="A montanha. Arrasta para baixo para ver as corridas anteriores."></canvas>
+<canvas id="montanha" aria-label="A montanha. Arrasta para cima para descer e ver as corridas anteriores."></canvas>
 
 <section id="vMontanha" class="vista">
   <header class="hud">
-    <div class="alt"><span id="altNum">0</span><small>m</small></div>
-    <div class="hudSub"><span id="altZona">Floresta</span> · <span id="altKm">0 km</span></div>
+    <div class="hudRot">ALTITUDE</div>
+    <div class="alt"><span id="altNum">0</span><small>M</small></div>
+    <div class="zonaChip"><i id="zonaCor"></i><span id="altZona">Floresta</span><b>·</b><span id="altKm">0 km</span></div>
   </header>
+  <div id="altimetro" aria-label="Altímetro: arrasta para percorrer a montanha"><div class="eixo" id="altEixo"></div><div id="altRiscas"></div><div class="mTopo" id="altTopo"></div><div class="mVista" id="altVista"></div></div>
   <button id="btTopo" class="btTopo" data-acao="topo" hidden>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14l6-6 6 6"/></svg>Voltar ao topo
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>Voltar ao topo
   </button>
-  <div id="balao" class="balao" hidden><b>Cabra Velha</b><span id="balaoTxt"></span></div>
+  <div id="balao" class="balao" hidden><div class="av" id="balaoAv"></div><div class="corpoB"><b>Cabra Velha</b><span id="balaoTxt"></span></div></div>
   <p class="dica" id="dica">Arrasta para cima para descer a montanha</p>
 </section>
 
@@ -30,10 +34,11 @@
 <section id="vPerfil" class="vista painel" hidden></section>
 
 <nav id="nav">
-  <button data-vista="vMontanha" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M2 20l7-12 4 6 3-4 6 10z"/><path d="M7.5 11l1.5 1.5 1.5-1.5"/></svg>Montanha</button>
-  <button class="fab" data-acao="registar" aria-label="Registar corrida"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
-  <button data-vista="vProgresso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M6 16v-4M11 16V8M16 16v-6M20 16V5"/></svg>Progresso</button>
-  <button data-vista="vPerfil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.2-4 4.3-6 8-6s6.8 2 8 6"/></svg>Perfil</button>
+  <button data-vista="vMontanha" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M2 20l7.5-13 4.5 7 2.5-3.5L22 20z"/><path d="M7.6 10.3l1.9 1.4 1.7-1.6"/></svg>Montanha</button>
+  <button data-vista="vProgresso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 3 5-7 4 4"/><path d="M3 21h18"/></svg>Progresso</button>
+  <button class="fab" data-acao="registar" aria-label="Registar corrida"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button data-acao="cabra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4c2-2 5-1.5 6 .5-1.5-.5-3 0-3.6 1.4"/><path d="M15 6.5c-2 0-3.5 1.5-3.5 3.5v1H7c-2.5 0-4 1.6-4 4v2.5"/><path d="M11.5 11c1 2.5 3.5 3 5.5 2 1.5-.8 2.5-2.5 2-4.5l-1-2.5"/><path d="M6 17v4M10 15.5V21M15 15v6"/><path d="M18.5 12.5v3"/></svg>Cabra</button>
+  <button data-vista="vPerfil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.2-4 4.3-6 8-6s6.8 2 8 6"/></svg>Perfil</button>
 </nav>
 
 <div id="folha" class="folha" hidden><div class="veu" data-acao="fechar"></div><div class="caixa" id="folhaCaixa"></div></div>
@@ -44,6 +49,7 @@
 
 <script src="ia-comum.js"></script>
 <script src="montanha.js"></script>
+<script src="corpo.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
