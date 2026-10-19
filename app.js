@@ -160,7 +160,7 @@ function iniciarMontanha(){
   });
   atualizarMontanha(); Montanha.irTopo(false);
   setTimeout(() => mostrarBalao(esc(falaDoMomento(lista))), 900);
-  if (lista.length > 2) setTimeout(() => $('#dica').style.opacity = 0, 6000); else $('#dica').textContent = lista.length ? 'Arrasta para baixo para descer a montanha' : 'Toca no + para registar a primeira corrida';
+  if (lista.length > 2) setTimeout(() => $('#dica').style.opacity = 0, 6000); else $('#dica').textContent = lista.length ? 'Arrasta para cima para descer a montanha' : 'Toca no + para registar a primeira corrida';
 }
 
 /* ---------- navegação ---------- */

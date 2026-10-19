@@ -1,5 +1,5 @@
 // Vertente — service worker: funciona sem internet, atualiza-se sozinha e recebe prints partilhados do Strava.
-const CACHE = 'vertente-v1';
+const CACHE = 'vertente-v2';
 const FICHEIROS = ['./', './index.html', './estilo.css', './ia-comum.js', './montanha.js', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
