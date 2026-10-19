@@ -7,7 +7,7 @@ const LS_CFG = 'vertente.cfg', LS_DADOS = 'vertente.dados';
 const ler = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch(e){ return d; } };
 const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ avisar('Não foi possível guardar: memória do navegador cheia.'); return false; } };
 
-let cfg = Object.assign({nome: '', tom: 'picante', chave: '', modelo: '', som: false, volume: .6, poupanca: 'auto'}, ler(LS_CFG, {}));
+let cfg = Object.assign({nome: '', tom: 'picante', chave: '', modelo: '', capa: true, som: false, volume: .6, poupanca: 'auto'}, ler(LS_CFG, {}));
 let dados = Object.assign({corridas: []}, ler(LS_DADOS, {}));
 dados.corridas = dados.corridas || [];
 const guardarCfg = () => gravar(LS_CFG, cfg);
@@ -264,7 +264,8 @@ function iniciarMontanha(){
   ligarAltimetro();
   atualizarMontanha(); Montanha.irTopo(false);
   const dz = Metas.estado(lista);
-  if (dados.desafioVisto !== dz.semana && lista.length){ dados.desafioVisto = dz.semana; guardarDados(); setTimeout(() => mostrarBalao('Nova bandeira na encosta. ' + dz.texto, {ms: 16000}), 900); }
+  if (Capa.abrir()){ /* a capa já mostra a fala */ }
+  else if (dados.desafioVisto !== dz.semana && lista.length){ dados.desafioVisto = dz.semana; guardarDados(); setTimeout(() => mostrarBalao('Nova bandeira na encosta. ' + dz.texto, {ms: 16000}), 900); }
   else setTimeout(() => mostrarBalao(falaDoMomento(lista)), 900);
   if (!lista.length) $('#dica').textContent = 'Toca no + depois da primeira corrida';
   else if (lista.length > 2) setTimeout(() => $('#dica').style.opacity = 0, 6000);
@@ -646,6 +647,8 @@ function renderPerfil(){
     </div>
     <div class="rotulo">Som e bateria</div>
     <div class="cartao">
+      <div class="linhaOp" style="margin-bottom:16px"><div><b>Capa ao abrir</b><span>A Cabra dá três marradas num penedo antes de entrares.</span></div><button class="interruptor${cfg.capa !== false ? ' on' : ''}" data-acao="capaAlt" aria-label="Capa ao abrir"><i></i></button></div>
+      <button class="btn peq" data-acao="verCapa" style="margin-bottom:18px">Ver a capa agora</button>
       <div class="linhaOp"><div><b>Sons de ambiente</b><span>Vento, chuva, fogueira, pássaros e trovões, conforme a montanha.</span></div><button class="interruptor${cfg.som ? ' on' : ''}" data-acao="somAlt" aria-label="Sons de ambiente"><i></i></button></div>
       <label class="campo"${cfg.som ? '' : ' hidden'}><span>Volume</span><input type="range" min="0" max="1" step=".05" value="${cfg.volume}" id="pVolume"></label>
       <div class="linhaOp" style="margin-top:16px;border:0"><div><b>Poupança de bateria</b><span>Menos efeitos e menos imagens por segundo. Em automático liga com bateria abaixo de 20% ou se o telemóvel não aguentar.</span></div></div>
@@ -697,6 +700,8 @@ document.addEventListener('click', async e => {
     case 'topo': Montanha.irTopo(); break;
     case 'registar': abrirRegisto(); break;
     case 'desafio': abrirDesafio(); break;
+    case 'capaAlt': cfg.capa = cfg.capa === false; guardarCfg(); renderPerfil(); break;
+    case 'verCapa': irVista('vMontanha'); Capa.abrir(true); break;
     case 'som': cfg.som = !cfg.som; guardarCfg(); Som.ligar(cfg.som); Som.definirVolume(cfg.volume); mostrarSom(); avisar(cfg.som ? 'Sons de ambiente ligados.' : 'Sons desligados.', 1800); if (vistaAtual === 'vPerfil') renderPerfil(); break;
     case 'somAlt': cfg.som = !cfg.som; guardarCfg(); Som.ligar(cfg.som); Som.definirVolume(cfg.volume); mostrarSom(); renderPerfil(); break;
     case 'poupanca': cfg.poupanca = b.dataset.v; guardarCfg(); Montanha.poupanca(cfg.poupanca); renderPerfil(); break;

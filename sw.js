@@ -1,6 +1,6 @@
 // Vertente — service worker: funciona sem internet, atualiza-se sozinha e recebe prints partilhados do Strava.
-const CACHE = 'vertente-v6';
-const FICHEIROS = ['./', './index.html', './estilo.css', './ia-comum.js', './montanha.js', './corpo.js', './cabra.js', './metas.js', './som.js', './app.js', './fontes/barlow-condensed-latin-500-normal.woff2', './fontes/barlow-condensed-latin-600-normal.woff2', './fontes/barlow-condensed-latin-700-normal.woff2', './fontes/inter.woff2', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const CACHE = 'vertente-v7';
+const FICHEIROS = ['./', './index.html', './estilo.css', './ia-comum.js', './montanha.js', './corpo.js', './cabra.js', './metas.js', './som.js', './capa.js', './app.js', './fontes/barlow-condensed-latin-500-normal.woff2', './fontes/barlow-condensed-latin-600-normal.woff2', './fontes/barlow-condensed-latin-700-normal.woff2', './fontes/inter.woff2', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FICHEIROS)));

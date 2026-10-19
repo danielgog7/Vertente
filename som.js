@@ -80,5 +80,15 @@ const Som = (() => {
   function focar(f){ foco = f; if (mestre) mestre.gain.setTargetAtTime(volume * foco, ac.currentTime, .4); }
   document.addEventListener('visibilitychange', () => { if (!ac) return; document.hidden ? ac.suspend() : (ligado && ac.resume()); });
   document.addEventListener('pointerdown', () => { if (ligado && ac && ac.state === 'suspended' && !document.hidden) ac.resume(); }, {passive: true});
-  return {ligar, atualizar, trovao, definirVolume, focar, ligado: () => ligado};
+  function marrada(n){
+    if (!ac || !ligado) return;
+    const t = ac.currentTime, o = ac.createOscillator(), g = ganho(0); o.type = 'sine';
+    o.frequency.setValueAtTime(n === 3 ? 120 : 95, t); o.frequency.exponentialRampToValueAtTime(40, t + .25);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(n === 3 ? .9 : .6, t + .01); g.gain.exponentialRampToValueAtTime(.001, t + .35);
+    o.connect(g).connect(mestre); o.start(t); o.stop(t + .4);
+    const s = ruido(), lp = ac.createBiquadFilter(), g2 = ganho(0); lp.type = 'lowpass'; lp.frequency.value = n === 3 ? 1400 : 700;
+    g2.gain.setValueAtTime(n === 3 ? .7 : .35, t); g2.gain.exponentialRampToValueAtTime(.001, t + (n === 3 ? .7 : .2));
+    s.connect(lp).connect(g2).connect(mestre); setTimeout(() => { try { s.stop(); } catch(e){} }, 900);
+  }
+  return {marrada, ligar, atualizar, trovao, definirVolume, focar, ligado: () => ligado};
 })();

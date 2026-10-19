@@ -281,3 +281,29 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .interruptor.on{background:linear-gradient(90deg,var(--fogo2),var(--fogo))}.interruptor.on i{transform:translateX(22px)}
 input[type=range]{width:100%;accent-color:var(--fogo);height:28px}
 .aviso{top:auto;bottom:calc(var(--navH) + var(--seg) + 74px)}
+
+/* capa de entrada */
+#capa{position:fixed;inset:0;z-index:40;overflow:hidden;background:#070b12;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;-webkit-user-select:none;user-select:none;transition:opacity .6s ease,transform .6s ease;touch-action:manipulation}
+#capa.sair{opacity:0;transform:scale(1.08);pointer-events:none}
+#capa .cCena{position:absolute;inset:0;width:100%;height:100%}
+#capa .cCabra,#capa .cPenedo,#capa .cLasca{transform-box:fill-box;transform-origin:50% 100%}
+#capa .cLasca{opacity:0}
+#capa .cRachas path{stroke-dasharray:60;stroke-dashoffset:60;transition:stroke-dashoffset .25s ease}
+#capa .cRachas path.on{stroke-dashoffset:0}
+.capaTopo,.capaBase,.capaFala{position:relative;z-index:1}
+.capaTopo{padding:calc(34px + var(--topo)) 24px 0;text-align:center;animation:entra .8s cubic-bezier(.2,.9,.3,1)}
+.capaMarca{font:700 15px/1 var(--fn);letter-spacing:.5em;color:rgba(255,255,255,.75);margin-left:.5em}
+.capaTopo h1{margin:12px 0 0;font:600 40px/1.05 var(--fn);text-shadow:0 2px 20px rgba(0,0,0,.4)}
+.capaFala{align-self:center;margin:0 22px;max-width:340px;padding:12px 15px;border-radius:18px;background:linear-gradient(#fbf7ef,#efe6d6);color:#221d17;font:500 14.5px/1.42 var(--ft);box-shadow:0 14px 34px rgba(0,0,0,.35);animation:balao .6s .4s cubic-bezier(.2,1.3,.4,1) both;position:absolute;top:calc(150px + var(--topo));left:0;right:0;margin:0 auto;width:calc(100% - 44px)}
+.capaFala::after{content:"";position:absolute;left:52%;bottom:-6px;width:14px;height:14px;background:#efe6d6;transform:rotate(45deg);border-radius:3px}
+.capaFala b{display:block;font:700 12px/1 var(--fn);letter-spacing:.14em;text-transform:uppercase;color:#a0561f;margin-bottom:5px}
+.capaBase{padding:0 16px calc(22px + var(--seg));text-align:center}
+.capaInfo{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.capaInfo div{padding:10px 6px;border-radius:16px;background:rgba(8,12,20,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--linha2)}
+.capaInfo b{display:block;font:600 22px/1 var(--fn)}.capaInfo b small{font-size:12px;margin-left:2px;opacity:.7}
+.capaInfo span{display:block;font-size:11px;color:var(--txt2);margin-top:5px;line-height:1.25}
+.capaInfo .ouro b{color:var(--ouro)}
+.capaDica{margin:0 0 10px;font:600 15px/1 var(--fn);letter-spacing:.2em;text-transform:uppercase;color:#fff;animation:pulso 1.8s infinite}
+.capaPontos{display:flex;gap:10px;justify-content:center}
+.capaPontos i{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);transition:all .2s}
+.capaPontos i.on{background:var(--fogo);border-color:var(--fogo2);box-shadow:0 0 12px var(--fogo)}
