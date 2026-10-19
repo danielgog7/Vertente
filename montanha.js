@@ -20,6 +20,7 @@ const Montanha = (() => {
   let corridas = [], topo = 0, estado = {tempestade: false, cansado: false};
   let cam = 0, vel = 0, anim = null, cb = {};
   let particulas = [], estrelas = [], faiscas = [], aves = [], relampago = 0, proxRelampago = 0;
+  let inicio = performance.now(), extra = {}, bandeiraPos = null, poupar = false, modoPoupanca = 'auto', bateriaBaixa = false, lento = false, ema = .016, lentoT = 0, ultimoQuadro = 0, ultimoToque = 0;
   let acampamentos = [], luzes = [], cabraPos = {x: 0, y: 0}, ultimaLeitura = '', textura = null, horaFixa = null;
 
   /* ---------- ilustrações ---------- */
@@ -175,7 +176,7 @@ const Montanha = (() => {
     return ctx.createPattern(c, 'repeat');
   }
   function medir(){
-    const r = cv.getBoundingClientRect(); dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const r = cv.getBoundingClientRect(); dpr = Math.min(window.devicePixelRatio || 1, poupar ? 1.25 : 2);
     W = Math.max(1, r.width); H = Math.max(1, r.height);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -204,7 +205,7 @@ const Montanha = (() => {
       ctx.fillStyle = gl; ctx.fillRect(0, 0, W, H);
       // raios de luz
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < 7; i++){
+      for (let i = 0; i < (poupar ? 0 : 7); i++){
         const an = .35 + i * .19 + Math.sin(t * .05 + i) * .03, l = H * 1.3;
         ctx.fillStyle = rgba(cs, .028 * k); ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + Math.cos(an - .035) * l, sy + Math.sin(an - .035) * l); ctx.lineTo(sx + Math.cos(an + .035) * l, sy + Math.sin(an + .035) * l); ctx.fill();
       }
@@ -231,7 +232,7 @@ const Montanha = (() => {
   function nuvensCeu(t){
     const c = cor(cam, 'ceuB'), cinza = {nublado: .35, chuva: .55, neve: .25, nevoeiro: .15}[TEMPO] || 0;
     const base = mix(mix(c, '#ffffff', .55 - NOITE * .35), '#7d8792', cinza), luzC = mix(base, '#ffffff', .6 - NOITE * .4 - cinza * .5);
-    const n = {limpo: 6, nublado: 13, chuva: 14, nevoeiro: 8, neve: 11}[TEMPO] || 6;
+    const n = Math.min(poupar ? 5 : 99, {limpo: 6, nublado: 13, chuva: 14, nevoeiro: 8, neve: 11}[TEMPO] || 6);
     for (let i = 0; i < n; i++){
       const s = .55 + rnd(i, 3) * .7, x = ((rnd(i, 1) * (W + 300) + t * (3 + 4 * s)) % (W + 300)) - 150, y = ((H * (.12 + .5 * rnd(i, 2)) + cam * PXM * .08) % (H * .8) + H * .8) % (H * .8);
       nuvemFofa(x, y, s, base, luzC, .55 + .25 * s - NOITE * .25);
@@ -272,7 +273,7 @@ const Montanha = (() => {
       for (let x = W; x >= 0; x -= 8) ctx.lineTo(x, topo(x) + 90 + Math.sin(x / 50 + t * .5) * 20);
       ctx.fill();
       ctx.strokeStyle = `rgba(${cores[b]},${.07 * k})`; ctx.lineWidth = 2;
-      for (let x = 4; x < W; x += 9){ const y = topo(x); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 50 + 30 * Math.sin(x * .3 + t)); ctx.stroke(); }
+      for (let x = 4; x < (poupar ? 0 : W); x += 9){ const y = topo(x); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 50 + 30 * Math.sin(x * .3 + t)); ctx.stroke(); }
     }
     ctx.restore();
   }
@@ -410,7 +411,7 @@ const Montanha = (() => {
     const tipo = !baixo ? '' : ESTACAO === 'outono' ? 'folhas' : ESTACAO === 'primavera' ? 'petalas' : ESTACAO === 'verao' ? (NOITE > .45 ? 'pirilampos' : 'borboletas') : '';
     if (tipo !== tipoSazonal){ tipoSazonal = tipo; sazonais = []; }
     if (!tipo) return;
-    const quer = {folhas: 18, petalas: 16, pirilampos: 22, borboletas: 5}[tipo];
+    const quer = Math.round({folhas: 18, petalas: 16, pirilampos: 22, borboletas: 5}[tipo] * (poupar ? .4 : 1));
     while (sazonais.length < quer) sazonais.push({x: Math.random() * W, y: Math.random() * H, v: .5 + Math.random(), r: Math.random(), rot: Math.random() * 6});
     const CF = ['#e0782e', '#c9452b', '#e9b23a', '#b8612a'], CB = ['#ffd23f', '#ff9a3c', '#9fd0ff', '#ffffff'];
     for (const p of sazonais){
@@ -504,7 +505,7 @@ const Montanha = (() => {
     ctx.fillStyle = gF; ctx.fill(banda);
     ctx.save(); ctx.clip(banda);
     // textura de rocha
-    if (textura){
+    if (textura && !poupar){
       textura.setTransform(new DOMMatrix().translate(0, (cam * PXM) % 256));
       ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = .55; ctx.fillStyle = textura; ctx.fillRect(0, 0, W, H);
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
@@ -750,6 +751,37 @@ const Montanha = (() => {
     }
   }
 
+
+  /* ---------- a bandeira do desafio da semana ---------- */
+  function altBandeira(){ const d = extra.desafio; if (!d) return null; return d.feito ? Math.max(d.alt0 || 0, Math.min(d.alvoAlt, topo - 330)) : Math.max(d.alvoAlt, topo + 260); }
+  function bandeiraDesafio(t){
+    bandeiraPos = null;
+    const d = extra.desafio; if (!d) return;
+    const a = altBandeira();
+    const y = yDe(a); if (y < -90 || y > H + 40) return;
+    const s = lado(a), x = trilhoX(a) + s * 30, ouro = d.feito;
+    sombraChao(x, y, 7); mariola(x, y + 2, .7);
+    ctx.strokeStyle = '#3d3226'; ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y - 4); ctx.lineTo(x, y - 62); ctx.stroke();
+    ctx.fillStyle = '#d8c9a8'; ctx.beginPath(); ctx.arc(x, y - 63, 2.2, 0, 7); ctx.fill();
+    const g = ctx.createLinearGradient(x, 0, x + 36, 0);
+    g.addColorStop(0, ouro ? '#ffe08a' : '#ff9a4d'); g.addColorStop(1, ouro ? '#e9a826' : '#e2501c');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x + 1, y - 61);
+    for (let i = 0; i <= 8; i++){ const u = i / 8; ctx.lineTo(x + 1 + u * 36, y - 61 + Math.sin(t * 4.5 - u * 4) * 3 * u); }
+    for (let i = 8; i >= 0; i--){ const u = i / 8; ctx.lineTo(x + 1 + u * 36, y - 39 + Math.sin(t * 4.5 - u * 4) * 3 * u); }
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = ouro ? '#6a4300' : 'rgba(255,240,225,.95)'; ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.beginPath();
+    const w = Math.sin(t * 4.5 - 2) * 1.5;
+    if (ouro){ ctx.moveTo(x + 12, y - 50 + w); ctx.lineTo(x + 17, y - 45 + w); ctx.lineTo(x + 26, y - 55 + w); }
+    else { ctx.moveTo(x + 12, y - 44 + w); ctx.lineTo(x + 19, y - 56 + w); ctx.lineTo(x + 26, y - 44 + w); }
+    ctx.stroke();
+    luzes.push({x: x + 18, y: y - 50, r: 34, cor: ouro ? '255,210,110' : '255,130,60', k: .35});
+    const txt = (ouro ? 'CUMPRIDO · ' : 'DESAFIO · ') + d.curto;
+    ctx.font = `700 11.5px ${FN}`; const tw = ctx.measureText(txt).width, bx = Math.max(8, Math.min(W - tw - 22, x + 18 - tw / 2 - 7));
+    ctx.fillStyle = ouro ? 'rgba(120,80,6,.92)' : 'rgba(150,50,10,.9)'; caixa(bx, y - 86, tw + 14, 18, 9); ctx.fill();
+    ctx.fillStyle = ouro ? '#ffe7a8' : '#fff1e6'; ctx.textAlign = 'left'; ctx.fillText(txt, bx + 7, y - 73);
+    bandeiraPos = {x: x + 16, y: y - 50};
+  }
+
   /* ---------- o corredor e a cabra ---------- */
   function cachecol(x, y, dir, t, forte){
     const v = forte ? 1.6 : 1, pts = [];
@@ -787,7 +819,7 @@ const Montanha = (() => {
   /* ---------- tempo e luz ---------- */
   function tempo(t, dt){
     const tipo = estado.tempestade ? 'chuva' : TEMPO === 'chuva' ? (cam < 5000 ? 'chuva' : 'neve') : (TEMPO === 'neve' || (INV() && cam < 5000)) ? 'neve' : ZONAS[zonaDe(Math.max(0, cam))].fino;
-    const quer = {neve: TEMPO === 'neve' ? 120 : 80, chuva: estado.tempestade ? 140 : 95, vento: 18, névoa: 7, estrelas: 0, nada: 0}[tipo] || 0;
+    const quer = Math.round(({neve: TEMPO === 'neve' ? 120 : 80, chuva: estado.tempestade ? 140 : 95, vento: 18, névoa: 7, estrelas: 0, nada: 0}[tipo] || 0) * (poupar ? .35 : 1));
     while (particulas.length < quer) particulas.push({x: Math.random() * W, y: Math.random() * H, v: .5 + Math.random(), r: Math.random()});
     if (particulas.length > quer) particulas.length = quer;
     for (const p of particulas){
@@ -820,7 +852,7 @@ const Montanha = (() => {
     }
     ctx.globalCompositeOperation = 'source-over';
     if (estado.tempestade){
-      if (t > proxRelampago){ relampago = 1; proxRelampago = t + 5 + Math.random() * 7; }
+      if (t > proxRelampago){ relampago = 1; proxRelampago = t + 5 + Math.random() * 7; cb.onRelampago && cb.onRelampago(); }
       if (relampago > 0){ ctx.fillStyle = `rgba(230,236,255,${relampago * .4})`; ctx.fillRect(0, 0, W, H); relampago -= dt * 3.5; }
     }
     // vinheta
@@ -830,7 +862,7 @@ const Montanha = (() => {
   }
   function faiscasFogo(t, dt){
     const a = topo, x = trilhoX(a), y = yDe(a), dir = -lado(a + 40) || 1, fx = x + dir * 56 + dir * 24;
-    if (!corridas.length || y < -40 || y > H + 40) return;
+    if (!corridas.length || poupar || y < -40 || y > H + 40) return;
     if (faiscas.length < 14 && Math.random() < dt * 10) faiscas.push({x: fx + (Math.random() - .5) * 5, y: y - 8, v: 18 + Math.random() * 24, vida: 1});
     for (const f of faiscas){ f.y -= f.v * dt; f.x += Math.sin(t * 4 + f.v) * 12 * dt; f.vida -= dt * .85; ctx.fillStyle = `rgba(255,205,120,${Math.max(0, f.vida)})`; ctx.fillRect(f.x, f.y, 1.7, 1.7); }
     faiscas = faiscas.filter(f => f.vida > 0);
@@ -840,7 +872,15 @@ const Montanha = (() => {
   let ultimaLuz = 0;
   function passo(){
     raf = 0; if (!ativa || document.hidden) return;
-    const agora = performance.now(), dt = Math.min(.05, (agora - t0) / 1000), t = agora / 1000; t0 = agora;
+    const agoraQ = performance.now(), parado = agoraQ - ultimoToque > 20000 && !anim && Math.abs(vel) < 1;
+    const fps = poupar ? (parado ? 12 : 30) : (parado ? 30 : 60);
+    if (agoraQ - ultimoQuadro < 1000 / fps - 4){ raf = requestAnimationFrame(passo); return; }
+    ultimoQuadro = agoraQ;
+    const agora = agoraQ, dt = Math.min(.05, (agora - t0) / 1000), t = agora / 1000; t0 = agora;
+    if (modoPoupanca === 'auto' && !poupar && !parado && agora - inicio > 5000){ // o telemóvel não aguenta 60 fps? baixa os efeitos
+      ema = ema * .95 + dt * .05; lentoT = ema > .028 ? lentoT + dt : 0;
+      if (lentoT > 3){ lento = true; reavaliar(); }
+    }
     if (agora - ultimaLuz > 30000){ calcularLuz(); ultimaLuz = agora; }
     if (anim){
       const k = Math.max(0, Math.min(1, (agora - anim.ini) / anim.dur)), e = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
@@ -849,7 +889,7 @@ const Montanha = (() => {
     } else if (!arrasto){
       cam += vel * dt; vel *= Math.pow(.04, dt);
       if (Math.abs(vel) < 2) vel = 0;
-      const min = -200, max = topo + 500;
+      const ab = altBandeira(), min = -200, max = Math.max(topo + 500, ab ? ab + 280 : 0);
       if (cam < min){ cam += (min - cam) * Math.min(1, dt * 8); vel = 0; }
       if (cam > max){ cam += (max - cam) * Math.min(1, dt * 8); vel = 0; }
     }
@@ -860,7 +900,7 @@ const Montanha = (() => {
     cordilheira(.3, 'longe', 270, 110, 2.7, .22, true);
     cordilheira(.55, 'meio', 330, 120, 4.3, .08, true);
     avesVoo(t, dt); aguia(t);
-    face(t); paisagem(t); trilho(); marcosDoTrilho(t); cenario(); abrigos(t); acampar(t); corredor(t); faiscasFogo(t, dt);
+    face(t); paisagem(t); trilho(); marcosDoTrilho(t); cenario(); abrigos(t); acampar(t); bandeiraDesafio(t); corredor(t); faiscasFogo(t, dt);
     marDeNuvens(true, t);
     estacaoParticulas(t, dt); tempo(t, dt); nevoeiro(t);
     aplicarLuz(t, dt);
@@ -874,9 +914,10 @@ const Montanha = (() => {
   /* ---------- toque ---------- */
   let arrasto = null;
   function ligarToque(){
-    cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); anim = null; vel = 0; arrasto = {y: e.clientY, y0: e.clientY, x0: e.clientX, t: performance.now(), ult: [[performance.now(), e.clientY]]}; });
+    cv.addEventListener('pointerdown', e => { ultimoToque = performance.now(); cv.setPointerCapture(e.pointerId); anim = null; vel = 0; arrasto = {y: e.clientY, y0: e.clientY, x0: e.clientX, t: performance.now(), ult: [[performance.now(), e.clientY]]}; });
     cv.addEventListener('pointermove', e => {
       if (!arrasto) return;
+      ultimoToque = performance.now();
       cam += (e.clientY - arrasto.y) / PXM; arrasto.y = e.clientY;
       arrasto.ult.push([performance.now(), e.clientY]); if (arrasto.ult.length > 6) arrasto.ult.shift();
       acordar();
@@ -894,6 +935,7 @@ const Montanha = (() => {
   }
   function tocar(e){
     const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    if (bandeiraPos && Math.hypot(x - bandeiraPos.x, y - bandeiraPos.y) < 40){ cb.onBandeira && cb.onBandeira(); return; }
     if (Math.hypot(x - cabraPos.x, y - cabraPos.y - 32) < 44){ cb.onToqueCabra && cb.onToqueCabra(); return; }
     let melhor = null, dm = 44;
     for (const a of acampamentos){ const d = Math.hypot(a.x - x, a.y - 12 - y); if (d < dm){ dm = d; melhor = a; } }
@@ -909,14 +951,15 @@ const Montanha = (() => {
     if (document.fonts) document.fonts.ready.then(acordar);
     acordar();
   }
-  function definir(lista, est){
+  function definir(lista, est, ext){
+    extra = ext || {};
     corridas = lista; estado = Object.assign({tempestade: false, cansado: false}, est);
     topo = lista.length ? lista[lista.length - 1].alt1 : 0;
     acordar();
   }
   function irTopo(suave = true){ irPara(topo, suave); }
   function irPara(alt, suave = true){
-    alt = Math.max(-200, Math.min(topo + 500, alt));
+    const ab = altBandeira(); alt = Math.max(-200, Math.min(Math.max(topo + 500, ab ? ab + 280 : 0), alt));
     if (!suave){ cam = alt; vel = 0; anim = null; acordar(); return; }
     anim = {de: cam, para: alt, ini: performance.now(), dur: Math.min(1800, 450 + Math.abs(cam - alt) * .12)}; acordar();
   }
@@ -925,6 +968,16 @@ const Montanha = (() => {
   function fixarHora(h){ horaFixa = h; calcularLuz(); acordar(); }
   function fixarEstacao(e){ estacaoFixa = e; calcularLuz(); acordar(); }
   function fixarTempo(tp){ tempoFixo = tp; calcularLuz(); acordar(); }
-  const ambiente = () => ({estacao: ESTACAO, tempo: TEMPO, noite: NOITE});
-  return {iniciar, definir, irTopo, irPara, subir, ligar, fixarHora, fixarEstacao, fixarTempo, ambiente, zonaDe: a => ZONAS[zonaDe(Math.max(0, a))], ZONAS, PXM, SVG_CABRA, noite: () => NOITE};
+  const ambiente = () => ({estacao: ESTACAO, tempo: TEMPO, noite: NOITE, cam, topo, zona: ZONAS[zonaDe(Math.max(0, cam))].nome, tempestade: !!estado.tempestade});
+  const tempoDia = iso => { const d = new Date(iso + 'T12:00:00'); return tempoDe(d, estacaoDe(d)); };
+  function reavaliar(){
+    const antes = poupar;
+    poupar = modoPoupanca === 'sempre' || (modoPoupanca === 'auto' && (bateriaBaixa || lento));
+    if (poupar !== antes && ctx){ medir(); particulas = []; sazonais = []; }
+    cb.onPoupanca && cb.onPoupanca(estadoPoupanca());
+  }
+  function poupanca(modo){ modoPoupanca = modo; if (modo !== 'auto') lento = false; reavaliar(); acordar(); }
+  const estadoPoupanca = () => ({ativo: poupar, modo: modoPoupanca, motivo: modoPoupanca === 'sempre' ? 'sempre' : bateriaBaixa ? 'bateria' : lento ? 'lento' : ''});
+  if (navigator.getBattery) navigator.getBattery().then(b => { const ver = () => { bateriaBaixa = !b.charging && b.level <= .2; reavaliar(); }; b.addEventListener('levelchange', ver); b.addEventListener('chargingchange', ver); ver(); }).catch(() => {});
+  return {iniciar, definir, irTopo, irPara, subir, ligar, fixarHora, fixarEstacao, fixarTempo, ambiente, tempoDia, poupanca, estadoPoupanca, zonaDe: a => ZONAS[zonaDe(Math.max(0, a))], ZONAS, PXM, SVG_CABRA, noite: () => NOITE};
 })();

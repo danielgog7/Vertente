@@ -242,3 +242,42 @@ a{color:var(--gelo)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 @media (min-width:700px){.kpis{grid-template-columns:repeat(4,1fr)}}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}input[type=number]{-moz-appearance:textfield}
+
+/* desafio da semana */
+.desafioChip{pointer-events:auto;position:relative;display:flex;align-items:center;gap:9px;margin-top:8px;padding:8px 13px 11px 10px;border-radius:14px;background:rgba(40,16,4,.62);border:1px solid rgba(255,140,60,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#ffe2cc;text-align:left;overflow:hidden;max-width:236px}
+.desafioChip svg{width:20px;height:20px;flex:none;color:var(--fogo2)}
+.desafioChip span{font:500 12.5px/1.25 var(--ft)} .desafioChip b{display:block;font:700 11.5px/1.1 var(--fn);letter-spacing:.14em;text-transform:uppercase;color:var(--fogo2)}
+.desafioChip i{position:absolute;left:0;bottom:0;height:3px;width:var(--p);background:linear-gradient(90deg,var(--fogo2),var(--fogo));box-shadow:0 0 8px var(--fogo)}
+.desafioChip.feito{background:rgba(60,42,6,.65);border-color:rgba(255,210,122,.55)} .desafioChip.feito svg,.desafioChip.feito b{color:var(--ouro)} .desafioChip.feito i{background:linear-gradient(90deg,#ffe08a,#e9a826)}
+.barraProg{height:12px;border-radius:12px;background:rgba(255,255,255,.08);overflow:hidden;margin:4px 0 2px}
+.barraProg i{display:block;height:100%;border-radius:12px;background:linear-gradient(90deg,var(--fogo2),var(--fogo));box-shadow:0 0 14px rgba(255,122,47,.6);transition:width .8s cubic-bezier(.2,.9,.3,1)}
+.barraProg.feito i{background:linear-gradient(90deg,#ffe08a,#e9a826)}
+.desafioCard{display:block;width:100%;text-align:left;color:inherit;margin-top:10px;background:linear-gradient(135deg,rgba(255,122,47,.14),rgba(255,122,47,.02));border-color:rgba(255,122,47,.28)}
+.desafioCard.feito{background:linear-gradient(135deg,rgba(255,210,122,.16),rgba(255,210,122,.03));border-color:rgba(255,210,122,.35)}
+.desafioCard .cTit b{display:flex;align-items:center;gap:7px}.desafioCard .cTit svg{width:15px;height:15px;color:var(--fogo2)}
+.dTxt{font:600 30px/1 var(--fn);letter-spacing:.02em;margin:2px 0 10px}
+.previsao{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:11px 13px;border-radius:14px;background:rgba(159,208,255,.07);border:1px solid rgba(159,208,255,.18);font-size:13.5px;color:var(--txt)}
+.previsao svg{width:20px;height:20px;flex:none;color:var(--gelo);margin-top:1px}.previsao b{color:var(--gelo)}.previsao span{display:block;font-size:12px;color:var(--txt2);margin-top:3px}
+.hist{display:grid;gap:6px}
+.hist div{display:grid;grid-template-columns:22px 64px 1fr;align-items:center;gap:8px;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--linha);font:600 14px/1 var(--fn);letter-spacing:.06em}
+.hist svg{width:18px;height:18px}.hist .sim svg{color:var(--ouro)}.hist .nao{opacity:.55}.hist span{color:var(--txt3)}
+/* marcos */
+.marcos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.marco{text-align:center;padding:12px 6px 10px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid var(--linha);opacity:.5}
+.marco .med{width:46px;height:46px;margin:0 auto 8px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.06);color:var(--txt3);box-shadow:inset 0 0 0 2px rgba(255,255,255,.08)}
+.marco .med svg{width:22px;height:22px}
+.marco b{display:block;font:700 13.5px/1.1 var(--fn);letter-spacing:.04em}
+.marco span{display:block;font-size:10.5px;line-height:1.3;color:var(--txt3);margin-top:4px}
+.marco.tem{opacity:1;background:linear-gradient(160deg,rgba(255,210,122,.1),rgba(255,255,255,.015));border-color:rgba(255,210,122,.25)}
+.marco.tem .med{background:radial-gradient(circle at 35% 30%,#ffe9b0,var(--z,#e9a826) 70%);color:#3a2504;box-shadow:0 0 0 3px rgba(255,210,122,.25),0 6px 16px rgba(233,168,38,.3)}
+.aviso.marcoAv{border-color:rgba(255,210,122,.6);color:var(--ouro)}
+/* som e bateria */
+.somBt{pointer-events:auto;position:absolute;right:14px;top:calc(18px + var(--topo));width:42px;height:42px;border-radius:14px;display:grid;place-items:center;border:1px solid var(--linha2);background:rgba(10,15,24,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:var(--txt2);z-index:2}
+.somBt svg{width:21px;height:21px}.somBt.on{color:var(--fogo2);border-color:rgba(255,140,60,.45)}
+.linhaOp{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.linhaOp b{display:block;font:600 19px/1.1 var(--fn);letter-spacing:.03em}.linhaOp span{display:block;font-size:12.5px;color:var(--txt2);margin-top:4px;line-height:1.4}
+.interruptor{flex:none;width:52px;height:30px;border-radius:30px;border:0;background:rgba(255,255,255,.12);position:relative;transition:background .2s}
+.interruptor i{position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.interruptor.on{background:linear-gradient(90deg,var(--fogo2),var(--fogo))}.interruptor.on i{transform:translateX(22px)}
+input[type=range]{width:100%;accent-color:var(--fogo);height:28px}
+.aviso{top:auto;bottom:calc(var(--navH) + var(--seg) + 74px)}

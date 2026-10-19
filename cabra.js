@@ -80,6 +80,13 @@ const Cabra = (() => {
     {q: c => c.tempo === 'nevoeiro', p: 3, pi: c => `Nevoeiro cerrado. Ninguém te vê a correr devagar. Aproveita.`},
     {q: c => c.tempo === 'neve', p: 3, pi: c => `Neve fresca. As pegadas ficam marcadas. Faz com que valha a pena vê-las.`},
     {q: c => c.noite > .5, p: 1, pi: c => `É de noite na montanha. As fogueiras estão acesas. Pena que a tua vontade não.`},
+    // ---- desafio da semana e previsão ----
+    {q: c => c.desafio && !c.desafio.feito && c.desafio.dias <= 2 && c.n, p: 7, s: c => `Faltam ${c.desafio.dias + 1} dias para o desafio: ${c.desafio.txt}. Ainda dá.`, pi: c => `${c.desafio.dias ? `Faltam ${c.desafio.dias + 1} dias` : 'É o último dia'} e o desafio está assim: ${c.desafio.txt}. A bandeira não sobe sozinha.`, f: c => `${c.desafio.dias ? `${c.desafio.dias + 1} dias` : 'Último dia'} e o desafio vai em ${c.desafio.txt}. Mexe-te, porra.`},
+    {q: c => c.desafio && !c.desafio.feito && c.desafio.frac >= .6, p: 5, s: c => `Estás quase a cumprir o desafio da semana (${c.desafio.txt}). Só mais um empurrão.`, pi: c => `Estás a ${Math.round((1 - c.desafio.frac) * 100)}% da bandeira. Seria uma pena falhar agora, não seria?`},
+    {q: c => c.desafio && c.desafio.feito, p: 4, s: c => `Desafio da semana cumprido. A bandeira é tua.`, pi: c => `Cumpriste o desafio da semana. Não esperes que eu faça uma festa. Já fiz uma, por dentro.`, f: c => `Desafio cumprido, caralho. Pronto, estou orgulhosa. Não contes a ninguém.`},
+    {q: c => c.desafio && !c.desafio.feito && c.desafio.frac === 0 && c.desafio.dias <= 4, p: 5, pi: c => `A bandeira da semana ainda nem sabe que existes. Desafio: ${c.desafio.curto.toLowerCase()}.`},
+    {q: c => c.previsao && c.previsao.dias < 90, p: 3, s: c => `A este ritmo chegas a ${c.previsao.zona} a ${fmtData(c.previsao.data)}. Bonito objetivo.`, pi: c => `A este ritmo chegas a ${c.previsao.zona} a ${fmtData(c.previsao.data)}. Se corresses mais, chegavas antes. Pensa nisso.`},
+    {q: c => c.previsao && c.previsao.dias >= 90, p: 3, pi: c => `A este ritmo chegas a ${c.previsao.zona} daqui a ${Math.round(c.previsao.dias / 30)} meses. Eu já vou ter cento e um anos.`},
     // ---- sabedoria de cabra (sempre) ----
     {q: () => true, p: .6, s: c => `Não há cume. Há só a próxima subida. E essa é tua.`, pi: c => `Não há cume. Há só a próxima subida e a tua desculpa seguinte.`},
     {q: () => true, p: .6, s: c => `Tenho cem anos e ainda subo. Tu também consegues.`, pi: c => `Tenho cem anos, uma barbicha e mais fôlego do que tu.`, f: c => `Tenho cem anos, uma barbicha e mais fôlego do que tu, caralho.`},
@@ -112,7 +119,7 @@ const Cabra = (() => {
 
   /* ---------- lotes da IA ---------- */
   let aPedir = null;
-  function chaveContexto(c, tom){ return [tom, c.hoje, c.ultId || '-', c.estacao, c.tempo, c.zona].join('|'); }
+  function chaveContexto(c, tom){ return [tom, c.hoje, c.ultId || '-', c.estacao, c.tempo, c.zona, c.desafio && c.desafio.feito ? 'f' : ''].join('|'); }
   function resumo(c){
     const L = [];
     L.push(`Nome: ${c.nome}. Corridas registadas: ${c.n}. Total: ${km(c.kmTotal, 1)} km. Altitude: ${metros(c.alt)} m (zona ${c.zona}).`);
@@ -122,6 +129,8 @@ const Cabra = (() => {
     if (c.ritmoMedio) L.push(`Ritmo médio (últimas 10): ${fmtRitmo(c.ritmoMedio)}/km. Melhor ritmo: ${fmtRitmo(c.ritmoMelhor)}/km. Distância média: ${km(c.distMedia, 1)} km. Mais longa: ${km(c.distMaisLonga, 1)} km.`);
     L.push(`Esta semana: ${km(c.kmSem, 1)} km. Semana passada: ${km(c.kmSemAnt, 1)} km. Média semanal: ${km(c.mediaSem, 1)} km. Semanas seguidas a correr: ${c.seq}. Corridas nos últimos 30 dias: ${c.c30}.`);
     if (c.tendencia) L.push(`Tendência de ritmo: ${Math.abs(c.tendencia)} s/km mais ${c.tendencia < 0 ? 'rápido' : 'lento'}.`);
+    if (c.desafio) L.push(`Desafio da semana: ${c.desafio.curto.toLowerCase()}; progresso: ${c.desafio.txt}${c.desafio.feito ? ' (CUMPRIDO)' : `; faltam ${c.desafio.dias + 1} dias`}.`);
+    if (c.previsao) L.push(`Previsão: a este ritmo chega a ${c.previsao.zona} a ${c.previsao.data} (faltam ${km(c.previsao.faltaKm, 1)} km).`);
     L.push(`Agora: ${c.diaNome}, ${c.hora}h, ${c.estacao === 'verao' ? 'verão' : c.estacao}, tempo na montanha: ${c.tempo}${c.noite > .5 ? ', de noite' : ''}.`);
     return L.join('\n');
   }

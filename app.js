@@ -7,8 +7,9 @@ const LS_CFG = 'vertente.cfg', LS_DADOS = 'vertente.dados';
 const ler = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch(e){ return d; } };
 const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ avisar('Não foi possível guardar: memória do navegador cheia.'); return false; } };
 
-let cfg = Object.assign({nome: '', tom: 'picante', chave: '', modelo: ''}, ler(LS_CFG, {}));
+let cfg = Object.assign({nome: '', tom: 'picante', chave: '', modelo: '', som: false, volume: .6, poupanca: 'auto'}, ler(LS_CFG, {}));
 let dados = Object.assign({corridas: []}, ler(LS_DADOS, {}));
+dados.corridas = dados.corridas || [];
 const guardarCfg = () => gravar(LS_CFG, cfg);
 const guardarDados = () => gravar(LS_DADOS, dados);
 
@@ -41,7 +42,11 @@ const COR_ZONA = {Floresta: '#5fae74', 'Prado alpino': '#b6d36a', Rocha: '#9aa1b
 const URL_CABRA = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(Montanha.SVG_CABRA);
 const avatar = (grande) => `<div class="av${grande ? ' grande' : ''}"><img src="${URL_CABRA}" alt=""></div>`;
 let timerAviso = 0;
-function avisar(t, ms = 3200, tipo = ''){ const a = $('#aviso'); a.className = 'aviso ' + tipo; a.innerHTML = t; a.hidden = false; clearTimeout(timerAviso); timerAviso = setTimeout(() => a.hidden = true, ms); }
+function avisar(t, ms = 3200, tipo = ''){ const a = $('#aviso'); a.className = 'aviso ' + tipo; a.innerHTML = t; a.hidden = false; clearTimeout(timerAviso); timerAviso = setTimeout(() => { a.hidden = true; proximoAviso(); }, ms); }
+const filaAvisos = [];
+function avisarFila(t, ms, tipo){ filaAvisos.push([t, ms, tipo]); if ($('#aviso').hidden) proximoAviso(); }
+function proximoAviso(){ const p = filaAvisos.shift(); if (p) setTimeout(() => avisar(...p), 250); }
+const vibrar = p => { try { navigator.vibrate && navigator.vibrate(p); } catch(e){} };
 
 /* ---------- ícones ---------- */
 const svgI = (d, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -71,6 +76,11 @@ const IC = {
   sonoBom: svgI('<path d="M20 14a8 8 0 0 1-10-10 8 8 0 1 0 10 10z"/><path d="M15 4h4l-4 4h4"/>'),
   bat1: svgI('<rect x="3" y="7" width="16" height="10" rx="2.5"/><path d="M21 10v4M6 10v4"/>'),
   bat2: svgI('<rect x="3" y="7" width="16" height="10" rx="2.5"/><path d="M21 10v4M6 10v4M9.5 10v4"/>'),
+  bandeira: svgI('<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>'),
+  check: svgI('<path d="M5 12l5 5 9-10"/>'),
+  som: svgI('<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>'),
+  mudo: svgI('<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/>'),
+  bateria: svgI('<rect x="3" y="7" width="16" height="10" rx="2.5"/><path d="M21 10v4"/><path d="M10 9l-2 3h4l-2 3"/>'),
   bat3: svgI('<rect x="3" y="7" width="16" height="10" rx="2.5"/><path d="M21 10v4M6 10v4M9.5 10v4M13 10v4M16 10v4"/>')
 };
 
@@ -135,7 +145,9 @@ function contexto(){
     kmTotal: l.reduce((s, c) => s + c.dist, 0), alt: topo, zona: Montanha.zonaDe(topo).nome,
     proxZona: prox ? {nome: prox.nome, falta: prox.alt - topo} : null, proxPlaca: 1000 - topo % 1000,
     hora: agora.getHours(), diaSem: agora.getDay(), diaNome: ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'][agora.getDay()],
-    estacao: amb.estacao, tempo: amb.tempo, noite: amb.noite
+    estacao: amb.estacao, tempo: amb.tempo, noite: amb.noite,
+    desafio: (() => { const d = Metas.estado(l); return {texto: d.texto, curto: d.curto, feito: d.feito, frac: d.frac, txt: d.txt, dias: d.diasRestantes}; })(),
+    previsao: Metas.previsao(l)
   };
 }
 function falaDoMomento(lista, aleatoria){
@@ -185,11 +197,18 @@ Responde só em JSON: {"comentario": "..."}`;
 let lista = preparar(), balaoAte = 0, vistaAtual = 'vMontanha', subindo = false, longe = false, escrita = 0;
 function atualizarMontanha(){
   lista = preparar();
-  Montanha.definir(lista, estadoAtual(lista));
+  const d = Metas.estado(lista);
+  Montanha.definir(lista, estadoAtual(lista), {desafio: {alvoAlt: d.altEsperada, alt0: d.alt0, curto: d.curto, feito: d.feito}});
+  mostrarDesafio(d);
   const topo = lista.length ? lista[lista.length - 1].alt1 : 0;
   if (!subindo) $('#altNum').textContent = metros(topo);
   $('#altKm').textContent = `${km(lista.reduce((s, c) => s + (c.dist || 0), 0))} km`;
   desenharAltimetro(topo);
+}
+function mostrarDesafio(d){
+  const b = $('#desafioChip'); if (!b) return;
+  b.classList.toggle('feito', d.feito);
+  b.innerHTML = `${d.feito ? IC.check : IC.bandeira}<span><b>${d.feito ? 'Desafio cumprido' : 'Desafio'}</b>${esc(d.txt)}</span><i style="--p:${(d.frac * 100).toFixed(0)}%"></i>`;
 }
 function mostrarZona(nome){ $('#altZona').textContent = nome; $('#zonaCor').style.cssText = `background:${COR_ZONA[nome] || '#fff'};color:${COR_ZONA[nome] || '#fff'}`; }
 let altMax = 2500, altTopo = 0;
@@ -234,13 +253,46 @@ function iniciarMontanha(){
     },
     onCabra: colocarBalao,
     onToqueCabra: () => mostrarBalao(falaDoMomento(lista, true)),
-    onAcampamento: c => abrirDetalhe(c.id)
+    onAcampamento: c => abrirDetalhe(c.id),
+    onBandeira: () => abrirDesafio(),
+    onRelampago: () => Som.trovao(),
+    onPoupanca: () => { if (vistaAtual === 'vPerfil') renderPerfil(); }
   });
+  Montanha.poupanca(cfg.poupanca);
+  if (cfg.som) Som.ligar(true); Som.definirVolume(cfg.volume); mostrarSom();
+  setInterval(() => { Som.atualizar(Montanha.ambiente()); Som.focar(vistaAtual === 'vMontanha' && $('#folha').hidden ? 1 : .35); }, 700);
   ligarAltimetro();
   atualizarMontanha(); Montanha.irTopo(false);
-  setTimeout(() => mostrarBalao(falaDoMomento(lista)), 900);
+  const dz = Metas.estado(lista);
+  if (dados.desafioVisto !== dz.semana && lista.length){ dados.desafioVisto = dz.semana; guardarDados(); setTimeout(() => mostrarBalao('Nova bandeira na encosta. ' + dz.texto, {ms: 16000}), 900); }
+  else setTimeout(() => mostrarBalao(falaDoMomento(lista)), 900);
   if (!lista.length) $('#dica').textContent = 'Toca no + depois da primeira corrida';
   else if (lista.length > 2) setTimeout(() => $('#dica').style.opacity = 0, 6000);
+}
+
+function mostrarSom(){ const b = $('#somBt'); if (b){ b.innerHTML = cfg.som ? IC.som : IC.mudo; b.classList.toggle('on', cfg.som); b.setAttribute('aria-label', cfg.som ? 'Desligar sons' : 'Ligar sons'); } }
+
+/* ---------- desafio da semana ---------- */
+function htmlPrevisao(l){
+  const p = Metas.previsao(l); if (!p) return '';
+  return `<div class="previsao">${IC.desnivel}<div>A este ritmo chegas a <b>${esc(p.zona)}</b> ${p.dias <= 1 ? 'amanhã' : p.dias < 60 ? `a ${fmtData(p.data)}` : `daqui a ${Math.round(p.dias / 30)} meses`}<span>Faltam ${km(p.faltaKm)} km · média de ${km(p.kmSemana)} km por semana</span></div></div>`;
+}
+function abrirDesafio(){
+  const d = Metas.estado(lista), hist = (dados.desafios || []).filter(x => x.semana !== d.semana).slice(-8).reverse();
+  abrirFolha(`<h2>Desafio da semana</h2><p class="sub">${d.feito ? 'Cumprido. A bandeira já é tua.' : d.diasRestantes > 0 ? `Faltam ${d.diasRestantes} ${d.diasRestantes === 1 ? 'dia' : 'dias'}, até domingo.` : 'Último dia. É hoje ou nunca.'}</p>
+    <div class="citacao">${avatar()}<div class="txt"><b>Cabra Velha</b>${esc(d.texto)}</div></div>
+    <div class="cartao" style="margin-top:12px"><div class="cTit"><b>${esc(d.curto)}</b><span>${d.feito ? 'CUMPRIDO' : Math.round(d.frac * 100) + '%'}</span></div>
+      <div class="barraProg${d.feito ? ' feito' : ''}"><i style="width:${(d.frac * 100).toFixed(1)}%"></i></div><p class="nota">${esc(d.txt)}</p></div>
+    ${htmlPrevisao(lista)}
+    ${hist.length ? `<div class="rotulo">Semanas anteriores · ${Metas.cumpridos()} cumpridos</div><div class="hist">${hist.map(h => `<div class="${h.feito ? 'sim' : 'nao'}">${h.feito ? IC.check : IC.bandeira}<span>${fmtData(h.semana)}</span><b>${esc(Metas.TIPOS[h.tipo].curto(h.alvo))}</b></div>`).join('')}</div>` : ''}
+    <div class="linhaBts"><button class="btn larg" data-acao="fechar">Fechar</button></div>`);
+}
+function celebrar(){ // depois de guardar ou apagar: desafio cumprido e marcos novos
+  const feito = Metas.verificar(lista);
+  if (feito){ avisarFila(`<small>DESAFIO DA SEMANA</small>Bandeira conquistada`, 4200, 'zona'); vibrar([60, 60, 120]); }
+  for (const m of Metas.novosMarcos(lista)) avisarFila(`<small>NOVO MARCO</small>${esc(m.nome)}`, 3600, 'zona marcoAv');
+  atualizarMontanha();
+  return feito;
 }
 
 /* ---------- navegação ---------- */
@@ -396,7 +448,7 @@ async function guardarCorrida(){
   const antes = lista.length ? lista[lista.length - 1].alt1 : 0;
   if (novo.editId){
     const c = dados.corridas.find(x => x.id === novo.editId);
-    Object.assign(c, reg); guardarDados(); fecharFolha(); atualizarMontanha(); if (vistaAtual === 'vProgresso') renderProgresso(); avisar('Corrida atualizada.');
+    Object.assign(c, reg); guardarDados(); fecharFolha(); atualizarMontanha(); celebrar(); if (vistaAtual === 'vProgresso') renderProgresso(); avisar('Corrida atualizada.');
     return;
   }
   const c = Object.assign({id: novoId(), criada: Date.now(), cabra: ''}, reg);
@@ -412,14 +464,15 @@ async function guardarCorrida(){
   Montanha.subir(de, depois, cam => { $('#altNum').textContent = metros(cam); mostrarZona(Montanha.zonaDe(cam).nome); }, async () => {
     subindo = false; $('#altNum').textContent = metros(depois); mostrarZona(Montanha.zonaDe(depois).nome);
     const zDepois = Montanha.zonaDe(depois).nome;
-    if (ultimaMinha && zDepois !== zAntes) avisar(`<small>NOVA ZONA DESBLOQUEADA</small>${esc(zDepois)}`, 5200, 'zona');
-    else avisar(`+${metros(depois - antes)} m · ${km(c.dist)} km`, 2600);
+    if (ultimaMinha && zDepois !== zAntes) avisarFila(`<small>NOVA ZONA DESBLOQUEADA</small>${esc(zDepois)}`, 5200, 'zona');
+    else avisarFila(`+${metros(depois - antes)} m · ${km(c.dist)} km`, 2600);
+    const desafioFeito = celebrar();
     if (!IA.temIA(cfg.chave)){ mostrarBalao(falaDoMomento(lista, true), {extra: 'Põe a chave da IA no Perfil para eu comentar a sério.'}); return; }
     mostrarBalao('', {carregar: true, ms: 60000});
     try {
       const t = await pedirComentario(c.id);
       const x = dados.corridas.find(k => k.id === c.id); if (x && t){ x.cabra = t; guardarDados(); lista = preparar(); }
-      mostrarBalao(t || falaDoMomento(lista, true), {ms: 18000});
+      mostrarBalao((t || falaDoMomento(lista, true)) + (desafioFeito ? ' E a bandeira da semana é tua.' : ''), {ms: 18000});
     } catch(e){ mostrarBalao(falaDoMomento(lista, true), {extra: esc(e.message || 'A IA não respondeu.')}); }
   });
 }
@@ -564,7 +617,8 @@ function renderProgresso(){
   const rec = (t, val, u, c, ic) => c ? `<button class="rec" data-acao="detalhe" data-id="${c.id}"><div class="ic">${IC[ic]}</div><div class="v n">${val}<small>${u}</small></div><div class="r">${t}</div><div class="d">${fmtData(c.data)}</div></button>` : '';
   const kpi = (val, u, r, ic, c, k) => `<div class="cartao kpi"><div class="ic" style="--c:${c};--k:${k}">${IC[ic]}</div><div class="v n">${val}<small>${u}</small></div><div class="r">${r}</div></div>`;
   v.innerHTML = `<div class="cab"><div><h1>Progresso</h1><p>Desde ${fmtData(l[0].data)} · ${l.length} corridas</p></div></div>
-    <div class="cartao heroi"><div class="cTit"><b>Perfil da escalada</b><span>${Montanha.zonaDe(topo).nome.toUpperCase()}</span></div>${svgPerfil(l)}</div>
+    <div class="cartao heroi"><div class="cTit"><b>Perfil da escalada</b><span>${Montanha.zonaDe(topo).nome.toUpperCase()}</span></div>${svgPerfil(l)}<div style="padding:0 10px">${htmlPrevisao(l)}</div></div>
+    ${(() => { const d = Metas.estado(l); return `<button class="cartao desafioCard${d.feito ? ' feito' : ''}" data-acao="desafio"><div class="cTit"><b>${IC.bandeira}Desafio da semana</b><span>${d.feito ? 'CUMPRIDO' : d.diasRestantes + ' DIAS'}</span></div><div class="dTxt">${esc(d.curto)}</div><div class="barraProg${d.feito ? ' feito' : ''}"><i style="width:${(d.frac * 100).toFixed(1)}%"></i></div><p class="nota">${esc(d.txt)} · ${Metas.cumpridos()} ${Metas.cumpridos() === 1 ? 'desafio cumprido' : 'desafios cumpridos'} no total</p></button>`; })()}
     <div class="kpis">${kpi(metros(topo), 'M', 'Altitude', 'alt', 'rgba(255,122,47,.15)', '#ffb15c')}${kpi(km(tot), 'KM', 'Total', 'dist', 'rgba(159,208,255,.13)', '#9fd0ff')}${kpi(l.length, '', 'Corridas', 'corridas', 'rgba(127,214,160,.13)', '#7fd6a0')}${kpi(km(estaSem), 'KM', 'Esta semana', 'semana', 'rgba(255,210,122,.13)', '#ffd27a')}</div>
     <div class="cartao"><div class="cTit"><b>Consistência</b><span>${cal.ult30} CORRIDAS EM 30 DIAS</span></div>${cal.svg}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><span class="insight${cal.seq ? '' : ' mau'}">${cal.seq ? `${cal.seq} ${cal.seq === 1 ? 'semana seguida' : 'semanas seguidas'} a correr` : 'Sem corridas esta semana nem na anterior'}</span>
@@ -573,6 +627,7 @@ function renderProgresso(){
     <div class="cartao" style="margin-top:10px"><div class="cTit"><b>Ritmo</b><span>ÚLTIMAS ${Math.min(16, l.length)}</span></div>${rit.svg}
       ${rit.delta ? `<span class="insight${rit.delta > 0 ? ' mau' : ''}">${rit.delta < 0 ? IC.sobe : IC.desce}${Math.abs(rit.delta)} s/km ${rit.delta < 0 ? 'mais rápido' : 'mais lento'} na tendência</span>` : ''}
       <p class="nota">Mais acima é mais rápido. A cor de cada ponto é o esforço que sentiste.</p></div>
+    ${(() => { const ms = Metas.marcos(l), tem = ms.filter(m => m.tem).length; return `<div class="rotulo">Marcos · ${tem} de ${ms.length}</div><div class="marcos">${ms.map(m => `<div class="marco${m.tem ? ' tem' : ''}"${m.zona ? ` style="--z:${COR_ZONA[m.zona]}"` : ''} title="${esc(m.dica)}"><div class="med">${IC[m.ic] || IC.trofeu}</div><b>${esc(m.nome)}</b><span>${m.tem ? fmtData(m.data) : esc(m.dica)}</span></div>`).join('')}</div>`; })()}
     <div class="rotulo">Recordes</div>
     <div class="recs">${rec('Mais longa', km(longa.dist, 2), 'KM', longa, 'trofeu')}${rec('Melhor ritmo', fmtRitmo(ritmo(rapida)), '/KM', rapida, 'raio')}${rec('Melhor 5 km', cinco ? fmtTempo(ritmo(cinco) * 5) : '', '', cinco, 'tempo')}${rec('Melhor 10 km', dez ? fmtTempo(ritmo(dez) * 10) : '', '', dez, 'tempo')}${rec('Mais desnível', subida ? metros(subida.desnivel) : '', 'M', subida, 'desnivel')}</div>
     <p class="nota">Os tempos de 5 e 10 km são estimados a partir do ritmo de corridas com essa distância ou mais.</p>
@@ -588,6 +643,14 @@ function renderPerfil(){
       <label class="campo" style="margin-top:0"><span>O teu nome</span><input type="text" id="pNome" value="${esc(cfg.nome)}" placeholder="Como a Cabra te chama"></label>
       <div class="rotulo" style="margin-top:18px">Tom da Cabra Velha</div>
       <div class="tons">${Object.entries(TONS).map(([k, [r, d, ex]]) => `<button class="tom${cfg.tom === k ? ' on' : ''}" data-acao="tom" data-v="${k}"><b>${r}</b><span>${d} “${ex}”</span></button>`).join('')}</div>
+    </div>
+    <div class="rotulo">Som e bateria</div>
+    <div class="cartao">
+      <div class="linhaOp"><div><b>Sons de ambiente</b><span>Vento, chuva, fogueira, pássaros e trovões, conforme a montanha.</span></div><button class="interruptor${cfg.som ? ' on' : ''}" data-acao="somAlt" aria-label="Sons de ambiente"><i></i></button></div>
+      <label class="campo"${cfg.som ? '' : ' hidden'}><span>Volume</span><input type="range" min="0" max="1" step=".05" value="${cfg.volume}" id="pVolume"></label>
+      <div class="linhaOp" style="margin-top:16px;border:0"><div><b>Poupança de bateria</b><span>Menos efeitos e menos imagens por segundo. Em automático liga com bateria abaixo de 20% ou se o telemóvel não aguentar.</span></div></div>
+      <div class="seg3" style="margin-top:10px">${[['auto', 'Automático'], ['sempre', 'Sempre'], ['nunca', 'Nunca']].map(([k, r]) => `<button class="chip${cfg.poupanca === k ? ' on' : ''}" data-acao="poupanca" data-v="${k}">${r}</button>`).join('')}</div>
+      <p class="nota">${(() => { const e = Montanha.estadoPoupanca(); return e.ativo ? `Ativa agora${e.motivo === 'bateria' ? ' (bateria fraca)' : e.motivo === 'lento' ? ' (o telemóvel estava a ter dificuldade)' : ''}.` : 'Desligada agora: efeitos completos.'; })()}</p>
     </div>
     <div class="rotulo">IA (Gemini)</div>
     <div class="cartao">
@@ -633,6 +696,10 @@ document.addEventListener('click', async e => {
     case 'fechar': fecharFolha(); break;
     case 'topo': Montanha.irTopo(); break;
     case 'registar': abrirRegisto(); break;
+    case 'desafio': abrirDesafio(); break;
+    case 'som': cfg.som = !cfg.som; guardarCfg(); Som.ligar(cfg.som); Som.definirVolume(cfg.volume); mostrarSom(); avisar(cfg.som ? 'Sons de ambiente ligados.' : 'Sons desligados.', 1800); if (vistaAtual === 'vPerfil') renderPerfil(); break;
+    case 'somAlt': cfg.som = !cfg.som; guardarCfg(); Som.ligar(cfg.som); Som.definirVolume(cfg.volume); mostrarSom(); renderPerfil(); break;
+    case 'poupanca': cfg.poupanca = b.dataset.v; guardarCfg(); Montanha.poupanca(cfg.poupanca); renderPerfil(); break;
     case 'cabra': irVista('vMontanha'); Montanha.irTopo(); setTimeout(() => mostrarBalao(falaDoMomento(lista, true)), 350); break;
     case 'escFoto': $('#fFoto').value = ''; $('#fFoto').click(); break;
     case 'escGpx': $('#fGpx').value = ''; $('#fGpx').click(); break;
@@ -656,7 +723,7 @@ document.addEventListener('click', async e => {
     }
     case 'apagar':
       if (!confirm('Apagar esta corrida? A altitude desce os metros correspondentes.')) break;
-      dados.corridas = dados.corridas.filter(x => x.id !== id); guardarDados(); fecharFolha(); atualizarMontanha(); Montanha.irTopo(); if (vistaAtual === 'vProgresso') renderProgresso(); avisar('Corrida apagada.'); break;
+      dados.corridas = dados.corridas.filter(x => x.id !== id); guardarDados(); fecharFolha(); atualizarMontanha(); Metas.verificar(lista); atualizarMontanha(); Montanha.irTopo(); if (vistaAtual === 'vProgresso') renderProgresso(); avisar('Corrida apagada.'); break;
     case 'outraCabra': {
       if (!IA.temIA(cfg.chave)){ avisar('Põe a chave da IA no Perfil.'); break; }
       const t = $('#txtCabra'); t.innerHTML = '<span class="pontos"><i></i><i></i><i></i></span>'; b.disabled = true;
@@ -682,6 +749,7 @@ document.addEventListener('click', async e => {
       dados = {corridas: []}; guardarDados(); atualizarMontanha(); Montanha.irTopo(false); avisar('Montanha limpa. De volta à base.'); break;
   }
 });
+document.addEventListener('input', e => { if (e.target.id === 'pVolume'){ cfg.volume = +e.target.value; guardarCfg(); Som.definirVolume(cfg.volume); } });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#folha').hidden) fecharFolha(); });
 $('#fFoto').addEventListener('change', e => { const f = e.target.files[0]; if (f) tratarFoto(f); });
 $('#fGpx').addEventListener('change', e => { const f = e.target.files[0]; if (f) tratarGpx(f); });
@@ -710,6 +778,7 @@ async function verPartilha(){
 }
 
 /* ---------- arranque ---------- */
+Metas.inicializarMarcos(preparar());
 iniciarMontanha();
 if (!cfg.nome) setTimeout(boasVindas, 600);
 verPartilha();
