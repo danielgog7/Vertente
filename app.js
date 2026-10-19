@@ -20,6 +20,7 @@ const isoDe = d => new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice
 const dataObj = iso => new Date(iso + 'T12:00:00');
 const fmtData = iso => { const d = dataObj(iso); return `${d.getDate()} ${MESES[d.getMonth()]}`; };
 const fmtDataLonga = iso => { const d = dataObj(iso); return `${DIAS[d.getDay()][0].toUpperCase() + DIAS[d.getDay()].slice(1)}, ${d.getDate()} ${MESES[d.getMonth()]}`; };
+const segunda = iso => { const d = dataObj(iso), k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k); return isoDe(d); };
 const diasEntre = (a, b) => Math.round((dataObj(b) - dataObj(a)) / 864e5);
 const km = (v, c = 1) => (+v || 0).toLocaleString('pt-PT', {minimumFractionDigits: c, maximumFractionDigits: c});
 const metros = v => Math.round(v || 0).toLocaleString('pt-PT', {useGrouping: 'always'}).replace(/\./g, ' ');
@@ -36,7 +37,7 @@ const corEsforco = e => ['#5fd39a', '#6fd38f', '#9bd36f', '#c9d35d', '#ecc75a', 
 const NOME_ESFORCO = e => e <= 2 ? 'Passeio' : e <= 4 ? 'Leve' : e <= 6 ? 'Moderado' : e <= 8 ? 'Duro' : e === 9 ? 'Muito duro' : 'Máximo';
 const ALT_POR_KM = 100;
 const novoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-const COR_ZONA = {Floresta: '#5fae74', Rocha: '#9aa1b0', Neve: '#e4eef8', 'Acima das nuvens': '#f4b98a', Estratosfera: '#8a8ff0', 'Órbita': '#5560c8'};
+const COR_ZONA = {Floresta: '#5fae74', 'Prado alpino': '#b6d36a', Rocha: '#9aa1b0', Glaciar: '#bfe3ff', 'Acima das nuvens': '#f4b98a', Estratosfera: '#8a8ff0', 'Órbita': '#5560c8'};
 const URL_CABRA = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(Montanha.SVG_CABRA);
 const avatar = (grande) => `<div class="av${grande ? ' grande' : ''}"><img src="${URL_CABRA}" alt=""></div>`;
 let timerAviso = 0;
@@ -97,34 +98,50 @@ function estadoAtual(lista){
 }
 
 /* ---------- a Cabra Velha ---------- */
-const FALAS = {
-  suave: {
-    zero: ['Então, {nome}? A montanha não se sobe a olhar para ela. Toca no + quando fizeres a primeira corrida.', 'Tenho cem anos e subo isto mais depressa do que tu. Vamos lá começar.'],
-    parado: ['{dias} dias sem subir. As pernas estão a ganhar teias de aranha, {nome}.', 'Olha a tempestade que se meteu. É o que dá ficar {dias} dias parado. Uma corridinha resolve.'],
-    cansado: ['Senta-te, descansa. Mas não te habitues.', 'Bom esforço. Hoje recupera; amanhã quero-te de pé.'],
-    normal: ['A montanha continua lá em cima. E tu continuas cá em baixo.', 'Cada quilómetro são cem metros. Faz as contas e mexe-te.', 'Não há cume. Há só o teu próximo acampamento.']
-  },
-  picante: {
-    zero: ['Zero metros. Zero. Até a minha avó cabra tem mais altitude que tu, {nome}.', 'Instalaste uma app de corrida para quê? Para decorar o telemóvel?'],
-    parado: ['{dias} dias parado. Já te confundi com uma pedra, {nome}.', 'Esta tempestade és tu, a apodrecer no sofá há {dias} dias. Sai daí.'],
-    cansado: ['Estás sentado como um saco de batatas. Merecido, vá. Mas só hoje.', 'Esforço a sério, finalmente. Descansa, que amanhã há mais.'],
-    normal: ['Isso que fizeste chama-se corrida? Eu chamo-lhe passear o cão.', 'Lá em cima ninguém quer saber das tuas desculpas.', 'Sobe. Daqui de cima a vista é melhor do que a tua preguiça.']
-  },
-  semfiltro: {
-    zero: ['Zero metros, caralho. Vais correr ou vais ficar a olhar para a montanha como um bacalhau?', 'Porra, {nome}. Nem um quilómetro. Calça os ténis.'],
-    parado: ['{dias} dias sem correr. Que merda é essa, {nome}? Mexe esse rabo.', 'Há {dias} dias que não sobes um metro. Até as pedras se mexem mais do que tu, porra.'],
-    cansado: ['Rebentaste-te a sério. Respeito, caralho. Hoje descansa.', 'Estás de rastos, e bem. Amanhã quero-te outra vez a subir.'],
-    normal: ['Isto não sobe sozinho, porra.', 'Achas que já fizeste muito? Ainda estás a ver as nuvens por baixo, caramba.', 'Cada desculpa tua é um metro que não sobes. Despacha-te.']
-  }
-};
 const TONS = {suave: ['Suave', 'Provoca com carinho e humor leve.', 'Cada quilómetro são cem metros. Faz as contas e mexe-te.'],
   picante: ['Picante', 'Insultos sarcásticos, sem palavrões.', 'Isso que fizeste chama-se corrida? Eu chamo-lhe passear o cão.'],
   semfiltro: ['Sem filtro', 'Com palavrões. Avisado estás.', 'Isto não sobe sozinho, porra.']};
+/* contexto para a Cabra: estatísticas, dia, hora, estação, tempo e zona */
+function semanasSeguidas(l){
+  const semanas = new Set(l.map(c => segunda(c.data))); let seq = 0; const s0 = dataObj(segunda(hojeISO()));
+  if (!semanas.has(isoDe(s0))) s0.setDate(s0.getDate() - 7);
+  while (semanas.has(isoDe(s0))){ seq++; s0.setDate(s0.getDate() - 7); }
+  return seq;
+}
+function tendenciaRitmo(l){
+  const rs = l.slice(-16).filter(c => ritmo(c)).map(ritmo), n = rs.length; if (n < 4) return 0;
+  const mx = (n - 1) / 2, my = rs.reduce((a, b) => a + b, 0) / n;
+  const b = rs.reduce((s, r, i) => s + (i - mx) * (r - my), 0) / rs.reduce((s, r, i) => s + (i - mx) ** 2, 0);
+  return Math.round(b * (n - 1));
+}
+function contexto(){
+  const l = lista, n = l.length, u = l[n - 1], hoje = hojeISO(), agora = new Date(), amb = Montanha.ambiente();
+  const ant = l.slice(-11, -1), comR = ant.filter(c => ritmo(c));
+  const sem0 = segunda(hoje), da = dataObj(sem0); da.setDate(da.getDate() - 7); const semAnt = isoDe(da);
+  const kmDe = s => l.filter(c => segunda(c.data) === s).reduce((a, c) => a + c.dist, 0);
+  const semanas = {}; l.forEach(c => { const s = segunda(c.data); if (s !== sem0) semanas[s] = (semanas[s] || 0) + c.dist; });
+  const ultSem = Object.keys(semanas).sort().slice(-12).map(k => semanas[k]);
+  const d30 = new Date(); d30.setDate(d30.getDate() - 30);
+  const topo = u ? u.alt1 : 0, prox = Montanha.ZONAS.find(z => z.alt > topo);
+  const rapidas = l.filter(c => c.dist >= 3 && ritmo(c));
+  return {
+    nome: cfg.nome || 'corredor', n, hoje, ultId: u ? u.id : '', ult: u ? Object.assign({}, u, {ritmo: ritmo(u)}) : null, ultData: u ? fmtData(u.data) : '',
+    dias: u ? diasEntre(u.data, hoje) : null, dor: u && u.dores && u.dores.length ? u.dores.map(Corpo.nome).join(', ').toLowerCase() : '',
+    ritmoMedio: comR.length ? comR.reduce((s, c) => s + ritmo(c), 0) / comR.length : 0,
+    ritmoMelhor: rapidas.length ? Math.min(...rapidas.map(ritmo)) : 0,
+    distMedia: ant.length ? ant.reduce((s, c) => s + c.dist, 0) / ant.length : 0, distMaisLonga: n ? Math.max(...l.map(c => c.dist)) : 0,
+    kmSem: kmDe(sem0), kmSemAnt: kmDe(semAnt), mediaSem: ultSem.length ? ultSem.reduce((a, b) => a + b, 0) / ultSem.length : 0,
+    seq: semanasSeguidas(l), c30: l.filter(c => c.data > isoDe(d30)).length, tendencia: tendenciaRitmo(l),
+    kmTotal: l.reduce((s, c) => s + c.dist, 0), alt: topo, zona: Montanha.zonaDe(topo).nome,
+    proxZona: prox ? {nome: prox.nome, falta: prox.alt - topo} : null, proxPlaca: 1000 - topo % 1000,
+    hora: agora.getHours(), diaSem: agora.getDay(), diaNome: ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'][agora.getDay()],
+    estacao: amb.estacao, tempo: amb.tempo, noite: amb.noite
+  };
+}
 function falaDoMomento(lista, aleatoria){
-  const e = estadoAtual(lista), f = FALAS[cfg.tom] || FALAS.picante, u = lista[lista.length - 1];
-  if (!aleatoria && u && u.cabra && e.dias !== null && e.dias <= 1) return u.cabra;
-  const g = !lista.length ? f.zero : e.tempestade ? f.parado : e.cansado ? f.cansado : f.normal;
-  return g[Math.floor(Math.random() * g.length)].replace(/\{nome\}/g, cfg.nome || 'corredor').replace(/\{dias\}/g, e.dias);
+  const e = estadoAtual(lista), u = lista[lista.length - 1];
+  if (!aleatoria && u && u.cabra && e.dias !== null && e.dias <= 1 && !sessionStorage.getItem('vertente.disse.' + u.id)){ sessionStorage.setItem('vertente.disse.' + u.id, '1'); return u.cabra; }
+  return Cabra.proxima(contexto(), cfg.tom) || 'A montanha continua lá em cima.';
 }
 const TOM_IA = {
   suave: 'Suave: provocas com carinho e humor leve, sem insultos pesados.',
@@ -383,6 +400,7 @@ async function guardarCorrida(){
     return;
   }
   const c = Object.assign({id: novoId(), criada: Date.now(), cabra: ''}, reg);
+  Cabra.esquecerLote();
   dados.corridas.push(c);
   if (!guardarDados()){ dados.corridas.pop(); return; }
   fecharFolha(); irVista('vMontanha');
@@ -446,7 +464,6 @@ function abrirDetalhe(id){
 }
 
 /* ---------- progresso ---------- */
-const segunda = iso => { const d = dataObj(iso), k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k); return isoDe(d); };
 function curva(pts){ // Catmull-Rom → Bézier
   if (pts.length < 3) return pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
   let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
@@ -500,10 +517,7 @@ function htmlCalendario(l){
   }
   const dias = ['S', '', 'Q', '', 'S', '', 'D'].map((t, i) => t ? `<text x="4" y="${18 + i * (cs + g) + 11.5}">${t}</text>` : '').join('');
   // semanas seguidas com pelo menos uma corrida
-  const semanas = new Set(l.map(c => segunda(c.data)));
-  let seq = 0; const s0 = dataObj(segunda(hoje));
-  if (!semanas.has(isoDe(s0))) s0.setDate(s0.getDate() - 7);
-  while (semanas.has(isoDe(s0))){ seq++; s0.setDate(s0.getDate() - 7); }
+  const seq = semanasSeguidas(l);
   const d30 = new Date(); d30.setDate(d30.getDate() - 30); const ult30 = l.filter(c => c.data > isoDe(d30)).length;
   return {svg: `<svg class="grafico" viewBox="0 0 ${W} ${H}">${meses}${dias}${cel}</svg>`, seq, ult30};
 }
@@ -650,7 +664,7 @@ document.addEventListener('click', async e => {
       catch(err){ t.textContent = err.message || 'A IA não respondeu.'; }
       b.disabled = false; break;
     }
-    case 'tom': cfg.tom = b.dataset.v; guardarCfg(); document.querySelectorAll('.tom').forEach(x => x.classList.toggle('on', x === b)); break;
+    case 'tom': cfg.tom = b.dataset.v; guardarCfg(); Cabra.esquecerLote(); document.querySelectorAll('.tom').forEach(x => x.classList.toggle('on', x === b)); break;
     case 'guardarPerfil': cfg.nome = $('#pNome').value.trim(); cfg.chave = $('#pChave').value.trim(); guardarCfg(); renderPerfil(); avisar('Guardado.'); break;
     case 'irPerfil': fecharFolha(); irVista('vPerfil'); break;
     case 'tomBV': cfg.tom = b.dataset.v; document.querySelectorAll('.tom').forEach(x => x.classList.toggle('on', x === b)); break;
