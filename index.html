@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1016">
+<meta name="description" content="Vertente: cada quilómetro que corres é altitude numa montanha sem cume.">
+<title>Vertente</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<canvas id="montanha" aria-label="A montanha. Arrasta para baixo para ver as corridas anteriores."></canvas>
+
+<section id="vMontanha" class="vista">
+  <header class="hud">
+    <div class="alt"><span id="altNum">0</span><small>m</small></div>
+    <div class="hudSub"><span id="altZona">Floresta</span> · <span id="altKm">0 km</span></div>
+  </header>
+  <button id="btTopo" class="btTopo" data-acao="topo" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14l6-6 6 6"/></svg>Voltar ao topo
+  </button>
+  <div id="balao" class="balao" hidden><b>Cabra Velha</b><span id="balaoTxt"></span></div>
+  <p class="dica" id="dica">Arrasta para baixo para descer a montanha</p>
+</section>
+
+<section id="vProgresso" class="vista painel" hidden></section>
+<section id="vPerfil" class="vista painel" hidden></section>
+
+<nav id="nav">
+  <button data-vista="vMontanha" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M2 20l7-12 4 6 3-4 6 10z"/><path d="M7.5 11l1.5 1.5 1.5-1.5"/></svg>Montanha</button>
+  <button class="fab" data-acao="registar" aria-label="Registar corrida"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button data-vista="vProgresso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M6 16v-4M11 16V8M16 16v-6M20 16V5"/></svg>Progresso</button>
+  <button data-vista="vPerfil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.2-4 4.3-6 8-6s6.8 2 8 6"/></svg>Perfil</button>
+</nav>
+
+<div id="folha" class="folha" hidden><div class="veu" data-acao="fechar"></div><div class="caixa" id="folhaCaixa"></div></div>
+<div id="aviso" class="aviso" hidden></div>
+<input type="file" id="fFoto" accept="image/*" hidden>
+<input type="file" id="fGpx" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden>
+<input type="file" id="fBackup" accept="application/json,.json" hidden>
+
+<script src="ia-comum.js"></script>
+<script src="montanha.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
