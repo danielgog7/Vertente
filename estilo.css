@@ -294,7 +294,7 @@ input[type=range]{width:100%;accent-color:var(--fogo);height:28px}
 .capaTopo{padding:calc(34px + var(--topo)) 24px 0;text-align:center;animation:entra .8s cubic-bezier(.2,.9,.3,1)}
 .capaMarca{font:700 15px/1 var(--fn);letter-spacing:.5em;color:rgba(255,255,255,.75);margin-left:.5em}
 .capaTopo h1{margin:12px 0 0;font:600 40px/1.05 var(--fn);text-shadow:0 2px 20px rgba(0,0,0,.4)}
-.capaFala{align-self:center;margin:0 22px;max-width:340px;padding:12px 15px;border-radius:18px;background:linear-gradient(#fbf7ef,#efe6d6);color:#221d17;font:500 14.5px/1.42 var(--ft);box-shadow:0 14px 34px rgba(0,0,0,.35);animation:balao .6s .4s cubic-bezier(.2,1.3,.4,1) both;position:absolute;top:calc(150px + var(--topo));left:0;right:0;margin:0 auto;width:calc(100% - 44px)}
+.capaFala{align-self:center;margin:0 22px;max-width:340px;padding:12px 15px;border-radius:18px;background:linear-gradient(#fbf7ef,#efe6d6);color:#221d17;font:500 14.5px/1.42 var(--ft);box-shadow:0 14px 34px rgba(0,0,0,.35);animation:balao .6s 1.7s cubic-bezier(.2,1.3,.4,1) both;position:absolute;top:calc(150px + var(--topo));left:0;right:0;margin:0 auto;width:calc(100% - 44px)}
 .capaFala::after{content:"";position:absolute;left:52%;bottom:-6px;width:14px;height:14px;background:#efe6d6;transform:rotate(45deg);border-radius:3px}
 .capaFala b{display:block;font:700 12px/1 var(--fn);letter-spacing:.14em;text-transform:uppercase;color:#a0561f;margin-bottom:5px}
 .capaBase{padding:0 16px calc(22px + var(--seg));text-align:center}
@@ -307,3 +307,11 @@ input[type=range]{width:100%;accent-color:var(--fogo);height:28px}
 .capaPontos{display:flex;gap:10px;justify-content:center}
 .capaPontos i{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);transition:all .2s}
 .capaPontos i.on{background:var(--fogo);border-color:var(--fogo2);box-shadow:0 0 12px var(--fogo)}
+#capa .gp{transform-box:view-box}
+#capa .gCorpo{animation:respira 3.4s ease-in-out infinite}
+#capa .gBarba{animation:barba 2.8s ease-in-out infinite}
+#capa .gSombra{animation:sombraR 3.4s ease-in-out infinite}
+#capa .cFaisca{transform-box:fill-box;transform-origin:center}
+@keyframes respira{50%{transform:scale(1.008,1.022)}}
+@keyframes barba{50%{transform:rotate(7deg)}}
+@keyframes sombraR{50%{transform:scaleX(1.03)}}
